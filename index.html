@@ -1,1 +1,186 @@
-<h3>Hello world</h3>
+<!doctype html>
+<html>
+<head>
+<meta charset="utf-8">
+<title>90-Day Progress Dashboard</title>
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<style>
+  body { font-family: system-ui, Arial, sans-serif; margin: 24px; }
+  .kpis { display:flex; flex-wrap:wrap; gap:16px; margin-bottom:24px; }
+  .card { padding:16px; border:1px solid #ddd; border-radius:12px; min-width:220px; }
+  h1 { margin-bottom: 8px; }
+  .muted { color:#666; font-size:0.9rem; }
+  canvas { max-width: 960px; width:100%; margin-top: 8px; }
+  .pill { display:inline-block; padding:4px 10px; border-radius:999px; border:1px solid #ddd; }
+  .ok { background:#e7f8ee; }
+  .warn { background:#fff7e6; }
+  .bad { background:#fdeaea;}
+</style>
+</head>
+<body>
+  <h1>90-Day Progress</h1>
+  <div id="who" class="muted">Participant: <span id="pid">—</span></div>
+
+  <div class="kpis">
+    <div class="card"><div>Overall Attainment</div><h2 id="attain">—</h2><div id="attainFlag" class="pill"> </div></div>
+    <div class="card"><div>On-Track vs Expected</div><h2 id="ontrack">—</h2><div class="muted" id="variance"> </div></div>
+    <div class="card"><div>Days Passed / Left</div><h2 id="days">—</h2><div class="muted" id="period"> </div></div>
+    <div class="card"><div>Weakest Area</div><h2 id="weak">—</h2><div class="muted">Focus here this week</div></div>
+  </div>
+
+  <h3>Weekly Attainment Trend</h3>
+  <canvas id="trend"></canvas>
+
+  <h3>Daily Consistency (past 6 weeks)</h3>
+  <canvas id="daily"></canvas>
+
+  <h3>Breakdown by Practice</h3>
+  <canvas id="byPractice"></canvas>
+
+  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+  <script>
+    const CSV_URL = "YOUR_PUBLISHED_CSV_URL"; // <-- paste your published CSV link here
+    const TARGET = 0.95; // 95%
+    const DAILY_PRACTICES = new Set(["Bible Reading","Morning Intimacy","Midnight Intercessory Prayer"]);
+
+    // --- helpers ---
+    const qs = new URLSearchParams(location.search);
+    const PID = (qs.get("id") || "").trim().toLowerCase();
+    document.getElementById("pid").textContent = PID || "(provide ?id=your_id)";
+
+    function csvToRows(text) {
+      const lines = text.trim().split(/\r?\n/);
+      const header = lines.shift().split(",");
+      return lines.map(line => {
+        // split by commas but respect quotes
+        const cols = line.split(/,(?=(?:[^"]*"[^"]*")*[^"]*$)/).map(s => s.replace(/^"|"$/g,""));
+        const obj = {};
+        header.forEach((h,i)=> obj[h.trim()] = (cols[i]||"").trim());
+        return obj;
+      });
+    }
+    function ymd(d) { return d.toISOString().slice(0,10); }
+    function startOfDay(d){ const x=new Date(d); x.setHours(0,0,0,0); return x; }
+    function parseDate(s){ const d = new Date(s); return isNaN(d) ? null : d; }
+
+    async function main() {
+      if (!PID) return;
+
+      const res = await fetch(CSV_URL);
+      const text = await res.text();
+      const rows = csvToRows(text).filter(r => r.participant_id.toLowerCase() === PID);
+
+      if (!rows.length) {
+        document.body.insertAdjacentHTML("beforeend", "<p>No data for this participant yet.</p>");
+        return;
+      }
+
+      // Determine program window from first week_start (Day 0) to Day 90
+      const weekStarts = rows.map(r => parseDate(r.week_start)).filter(Boolean).sort((a,b)=>a-b);
+      const programStart = startOfDay(weekStarts[0]);
+      const today = startOfDay(new Date());
+      const dayNum = Math.max(1, Math.min(90, Math.floor((today - programStart)/(1000*60*60*24)) + 1));
+      const daysLeft = Math.max(0, 90 - dayNum);
+
+      // Tally units
+      let completed = 0, possible = 0;
+      const byPractice = {};
+      const byWeek = {};
+      const last42 = []; // daily last 6 weeks
+
+      rows.forEach(r => {
+        const val = Number(r.value || 0);
+        const date = parseDate(r.date);
+        const wk = r.week_start;
+        possible += 1;
+        completed += val;
+
+        // practice breakdown
+        byPractice[r.practice] = byPractice[r.practice] || {done:0, total:0};
+        byPractice[r.practice].done += val;
+        byPractice[r.practice].total += 1;
+
+        // weekly trend (sum/value / count per week)
+        byWeek[wk] = byWeek[wk] || {done:0,total:0};
+        byWeek[wk].done += val;
+        byWeek[wk].total += 1;
+
+        // daily history for daily practices only
+        if (DAILY_PRACTICES.has(r.practice) && date) {
+          last42.push({d: ymd(date), v: val});
+        }
+      });
+
+      // Expected progress line at this day:
+      // Expected possible units by day: daily = dayNum * 3
+      // Weekly units accrued each 7 days: floor((dayNum-1)/7)+1 weeks elapsed since start
+      const weeksElapsed = Math.max(1, Math.ceil(dayNum/7));
+      const expectedPossible = (dayNum * 3) + (weeksElapsed * 4);
+      const expectedCompletedFor95 = expectedPossible * TARGET;
+
+      // Current attainment
+      const attainment = possible ? (completed / possible) : 0;
+
+      // On-track vs expected (compare completed to 95% of expectedPossible)
+      const variance = completed - expectedCompletedFor95; // positive = ahead
+
+      // Weakest area
+      let weakest = null, weakestPct = 1;
+      Object.keys(byPractice).forEach(k => {
+        const pct = byPractice[k].total ? (byPractice[k].done/byPractice[k].total) : 0;
+        if (pct < weakestPct) { weakestPct = pct; weakest = k; }
+      });
+
+      // Update KPI cards
+      const pctFmt = x => (Math.round(x*1000)/10).toFixed(1) + "%";
+      document.getElementById("attain").textContent = pctFmt(attainment);
+      const flag = document.getElementById("attainFlag");
+      flag.textContent = attainment >= TARGET ? "On pace for 95%+" : (attainment >= 0.8 ? "Needs push" : "At risk");
+      flag.className = "pill " + (attainment >= TARGET ? "ok" : (attainment >= 0.8 ? "warn" : "bad"));
+
+      document.getElementById("ontrack").textContent = (variance >= 0 ? "+" : "") + (Math.round(variance*10)/10);
+      document.getElementById("variance").textContent = "Completed vs expected (for today)";
+
+      document.getElementById("days").textContent = `Day ${dayNum} / 90  —  ${daysLeft} left`;
+      document.getElementById("period").textContent = `Program started ${ymd(programStart)}`;
+
+      document.getElementById("weak").textContent = weakest ? `${weakest} (${pctFmt(weakestPct)})` : "—";
+
+      // Weekly trend chart
+      const wLabels = Object.keys(byWeek).sort();
+      const wPct = wLabels.map(w => {
+        const a = byWeek[w];
+        return a.total ? Math.round(1000*(a.done/a.total))/10 : 0;
+      });
+
+      new Chart(document.getElementById("trend"), {
+        type: "line",
+        data: { labels: wLabels, datasets: [{ label: "Weekly Attainment %", data: wPct }] },
+        options: { responsive: true }
+      });
+
+      // Daily consistency (past ~6 weeks, average of the 3 daily practices per day)
+      const byDay = {};
+      last42.forEach(x => { byDay[x.d] = (byDay[x.d]||0) + x.v; });
+      const dLabels = Object.keys(byDay).sort().slice(-42);
+      const dAvg = dLabels.map(d => byDay[d]/3 * 100); // 0..100
+      new Chart(document.getElementById("daily"), {
+        type: "bar",
+        data: { labels: dLabels, datasets: [{ label: "Daily Consistency (avg of 3 practices)", data: dAvg }] },
+        options: { responsive: true }
+      });
+
+      // By practice breakdown
+      const pLabels = Object.keys(byPractice);
+      const pPct = pLabels.map(k => byPractice[k].done / byPractice[k].total * 100);
+      new Chart(document.getElementById("byPractice"), {
+        type: "bar",
+        data: { labels: pLabels, datasets: [{ label: "% Attainment", data: pPct }] },
+        options: { responsive: true }
+      });
+    }
+
+    main();
+  </script>
+</body>
+</html>

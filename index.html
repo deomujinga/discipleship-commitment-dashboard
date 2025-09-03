@@ -70,7 +70,7 @@
       <div id="streaks" class="sub" style="margin-top:10px"></div>
     </div>
     <div class="card">
-      <div class="row"><h2>Reasons Mentioned (Bag of Words)</h2><span id="cloudHint" class="sub"></span></div>
+      <div class="row"><h2>Reasons Mentioned (Word Cloud)</h2><span id="cloudHint" class="sub"></span></div>
       <div id="cloud" class="cloud"></div>
       <div style="margin-top:14px">
         <h2 style="margin-bottom:8px">Weekly Commitments (latest week)</h2>
@@ -103,9 +103,10 @@
   function sod(d){ const x=new Date(d); x.setHours(0,0,0,0); return x; }
   function pd(s){ const d=new Date(s); return isNaN(d)?null:d; }
   function pct(x){ return (Math.round(x*1000)/10).toFixed(1)+"%"; }
+  function fetchCSV(url){ return fetch(url+(url.includes("?")?"&":"?")+"cb="+Date.now()).then(r=>r.text()).then(csvToRows); }
 
+  // tolerant participant id getter
   function getRowPid(row){
-    // tolerant to header cases
     const cands = ["participant_id","Email Address","email address","Email","email"];
     for (const want of cands){
       const found = Object.keys(row).find(h => h.toLowerCase()===want.toLowerCase());
@@ -116,19 +117,27 @@
 
   function longestStreak(vals){ let best=0,cur=0; for(const v of vals){ cur=v?cur+1:0; best=Math.max(best,cur); } return best; }
 
-  async function fetchCSV(url){ const r=await fetch(url+(url.includes("?")?"&":"?")+"cb="+Date.now()); return csvToRows(await r.text()); }
+  // find header key ignoring spaces/underscores & case
+  function findKeyExactish(row, target){
+    const want = target.replace(/[\s_]+/g,"").toLowerCase();
+    return Object.keys(row).find(k => k.replace(/[\s_]+/g,"").toLowerCase() === want) || null;
+  }
 
   (async function main(){
     if(!pid) return;
 
     const factAll = await fetchCSV(FACT_CSV_URL);
-    // filter for this person
     const fact = factAll.filter(r => getRowPid(r)===pid);
 
     if (!fact.length){
       document.body.insertAdjacentHTML("beforeend","<div class='wrap'><p>No data yet for this participant.</p></div>");
       return;
     }
+
+    // detect comment headers once from first row (robust to case/underscores)
+    const sample = fact[0];
+    const KEY_COMMENT_GENERAL = findKeyExactish(sample, "comment_general") || "comment_general";
+    const KEY_COMMENT_OTHER   = findKeyExactish(sample, "comment_other")   || "comment_other";
 
     // Program timing
     const weekStarts = fact.map(r=>pd(r.week_start)).filter(Boolean).sort((a,b)=>a-b);
@@ -141,7 +150,7 @@
     // Aggregations
     let completed=0, possible=0;
     const byPractice={}, byWeek={}, byDayAgg={};
-    const comments = []; // collect from comment_general + comment_other
+    const commentTexts = [];
 
     fact.forEach(r=>{
       const val = Number(r.value||0);
@@ -159,10 +168,10 @@
         byDayAgg[r.date] = (byDayAgg[r.date]||0) + val; // 0..3
       }
 
-      const cg = (r.comment_general||"").trim();
-      const co = (r.comment_other||"").trim();
-      if (cg) comments.push(cg);
-      if (co) comments.push(co);
+      const cg = (r[KEY_COMMENT_GENERAL]||"").trim();
+      const co = (r[KEY_COMMENT_OTHER]  ||"").trim();
+      if (cg) commentTexts.push(cg);
+      if (co) commentTexts.push(co);
     });
 
     // KPIs
@@ -258,29 +267,33 @@
       options:{ responsive:true, plugins:{ legend:{position:"bottom"} } }
     });
 
-    // Bag of words from comment_general + comment_other
-    const STOP = new Set(("the a an and or to of in for with on at is are am be this that it as i we you they he she was were have has had from by not n/a na week weeks day days because due just really very").split(" "));
+    /* ===== WORD CLOUD from comment_general + comment_other (exact) ===== */
+    const STOP = new Set(("the a an and or to of in for with on at is are am be this that it as i we you they he she was were have has had from by not n/a na week weeks day days because due just really very i’m im ive i've").split(" "));
     const cloudEl = document.getElementById("cloud");
-    const words = {};
+    const freq = {};
     let samples = 0;
 
     fact.forEach(r=>{
-      const text = [(r.comment_general||""), (r.comment_other||"")].join(" ").toLowerCase().trim();
-      if (!text || text==="n/a" || text==="na") return;
+      const g = (r[KEY_COMMENT_GENERAL]||"").toLowerCase().trim();
+      const o = (r[KEY_COMMENT_OTHER]  ||"").toLowerCase().trim();
+      const text = (g + " " + o).trim();
+      if (!text || /^n\/?a$/.test(text)) return; // ignore empty/NA
       samples++;
       text.replace(/[^a-z0-9\s]/g," ").split(/\s+/).forEach(w=>{
         if(!w || STOP.has(w)) return;
-        words[w] = (words[w]||0)+1;
+        freq[w] = (freq[w]||0)+1;
       });
     });
 
-    const entries = Object.entries(words).sort((a,b)=>b[1]-a[1]).slice(0,25);
+    cloudEl.innerHTML = "";
+    const entries = Object.entries(freq).sort((a,b)=>b[1]-a[1]).slice(0,25);
     const max = entries[0]?.[1] || 1;
     entries.forEach(([w,c])=>{
+      const weight = c/max;
+      const bucket = weight > .8 ? 5 : weight > .6 ? 4 : weight > .4 ? 3 : weight > .2 ? 2 : 1;
       const span = document.createElement("span");
-      const bucket = (c/max>.8)?5:(c/max>.6)?4:(c/max>.4)?3:(c/max>.2)?2:1;
       span.className = "tag w"+bucket;
-      span.textContent = w + " ("+c+")";
+      span.textContent = `${w} (${c})`;
       cloudEl.appendChild(span);
     });
     document.getElementById("cloudHint").textContent = samples ? `${samples} comment(s)` : "No comments yet";

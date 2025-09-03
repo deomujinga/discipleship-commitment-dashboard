@@ -4,146 +4,89 @@
 <meta charset="utf-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1" />
 <title>Discipleship 90-Day Dashboard</title>
-
-<!-- Charts -->
 <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
-
 <style>
   :root{
-    --bg:#f7f9fc;
-    --card:#ffffff;
-    --ink:#1f2937;
-    --muted:#6b7280;
-    --ok:#16a34a;
-    --warn:#f59e0b;
-    --bad:#ef4444;
-    --accent:#2563eb;
-    --shadow: 0 8px 24px rgba(0,0,0,.06);
-    --radius: 16px;
+    --bg:#f7f9fc; --card:#ffffff; --ink:#1f2937; --muted:#6b7280;
+    --ok:#16a34a; --warn:#f59e0b; --bad:#ef4444; --shadow:0 8px 24px rgba(0,0,0,.06);
+    --radius:16px;
   }
   *{box-sizing:border-box}
-  body{margin:0; background:var(--bg); color:var(--ink); font-family: ui-sans-serif, system-ui, -apple-system, Segoe UI, Roboto, "Helvetica Neue", Arial;}
-  header{padding:20px 24px 8px; display:flex; justify-content:space-between; align-items:center;}
-  header h1{margin:0; font-size: clamp(20px, 3vw, 28px);}
-  header .who{color:var(--muted); font-size:14px}
-  .wrap{padding:0 24px 40px; max-width:1200px; margin:0 auto;}
-
-  /* GRID LAYOUT */
-  .grid{display:grid; gap:18px;}
-  .kpis{grid-template-columns: repeat(4, minmax(0,1fr));}
-  .mid{grid-template-columns: 2fr 1.4fr;}
-  .bottom{grid-template-columns: 1.6fr 1.4fr;}
-  @media (max-width: 980px){
-    .kpis{grid-template-columns: repeat(2, minmax(0,1fr));}
-    .mid, .bottom{grid-template-columns: 1fr;}
-  }
-
-  /* CARDS */
-  .card{background:var(--card); border-radius:var(--radius); box-shadow:var(--shadow); padding:16px 16px;}
-  .card h3{margin:0 0 8px; font-size:16px; color:var(--muted); font-weight:600; letter-spacing:.2px}
-  .big{font-size: clamp(22px, 4vw, 30px); margin: 6px 0 4px; font-weight:800}
-  .sub{font-size:12px; color:var(--muted)}
-  .pill{display:inline-block; padding:4px 10px; border-radius:999px; border:1px solid #e5e7eb; font-size:12px; font-weight:600; margin-top:6px}
-  .ok{background:#e8f8ee; color:#065f46}
-  .warn{background:#fff7e6; color:#92400e}
-  .bad{background:#fdeaea; color:#991b1b}
-
-  /* SECTION TITLES */
-  .section h2{font-size:18px; margin:0 0 12px; color:#111827}
-  canvas{width:100%; height:auto; max-height:420px}
-
-  /* HEATMAP (CSS grid) */
-  .heat{display:grid; grid-template-columns: repeat(14, 1fr); gap:3px}
-  .cell{height:18px; border-radius:4px; background:#e5e7eb}
-  .c0{background:#eef2ff}
-  .c33{background:#c7d2fe}
-  .c66{background:#93c5fd}
-  .c100{background:#60a5fa}
-
-  /* TAG CLOUD */
-  .cloud{display:flex; flex-wrap:wrap; gap:10px}
-  .tag{border-radius:20px; padding:6px 10px; background:#eef2ff; color:#1e3a8a; font-weight:600}
-  .w1{font-size:12px} .w2{font-size:14px} .w3{font-size:16px}
-  .w4{font-size:18px} .w5{font-size:22px}
-  .muted{color:var(--muted)}
-  .row{display:flex; gap:18px; align-items:center}
+  body{margin:0;background:var(--bg);color:var(--ink);font-family:ui-sans-serif,system-ui,-apple-system,Segoe UI,Roboto,"Helvetica Neue",Arial}
+  header{padding:20px 24px 8px;display:flex;justify-content:space-between;align-items:center}
+  header h1{margin:0;font-size:clamp(20px,3vw,28px)}
+  header .who{color:var(--muted);font-size:14px}
+  .wrap{padding:0 24px 40px;max-width:1200px;margin:0 auto}
+  .grid{display:grid;gap:18px}
+  .kpis{grid-template-columns:repeat(4,minmax(0,1fr))}
+  .mid{grid-template-columns:2fr 1.4fr}
+  .bottom{grid-template-columns:1.6fr 1.4fr}
+  @media (max-width:980px){.kpis{grid-template-columns:repeat(2,minmax(0,1fr))}.mid,.bottom{grid-template-columns:1fr}}
+  .card{background:var(--card);border-radius:var(--radius);box-shadow:var(--shadow);padding:16px}
+  .card h3{margin:0 0 8px;font-size:16px;color:var(--muted);font-weight:600;letter-spacing:.2px}
+  .big{font-size:clamp(22px,4vw,30px);margin:6px 0 4px;font-weight:800}
+  .sub{font-size:12px;color:var(--muted)}
+  .pill{display:inline-block;padding:4px 10px;border-radius:999px;border:1px solid #e5e7eb;font-size:12px;font-weight:600;margin-top:6px}
+  .ok{background:#e8f8ee;color:#065f46}
+  .warn{background:#fff7e6;color:#92400e}
+  .bad{background:#fdeaea;color:#991b1b}
+  .section h2{font-size:18px;margin:0 0 12px;color:#111827}
+  canvas{width:100%;height:auto;max-height:420px}
+  .heat{display:grid;grid-template-columns:repeat(14,1fr);gap:3px}
+  .cell{height:18px;border-radius:4px;background:#e5e7eb}
+  .c0{background:#eef2ff}.c33{background:#c7d2fe}.c66{background:#93c5fd}.c100{background:#60a5fa}
+  .cloud{display:flex;flex-wrap:wrap;gap:10px}
+  .tag{border-radius:20px;padding:6px 10px;background:#eef2ff;color:#1e3a8a;font-weight:600}
+  .w1{font-size:12px}.w2{font-size:14px}.w3{font-size:16px}.w4{font-size:18px}.w5{font-size:22px}
+  .row{display:flex;gap:18px;align-items:center;justify-content:space-between}
 </style>
 </head>
 <body>
-  <header>
-    <h1>Discipleship 90-Day Dashboard</h1>
-    <div class="who">Participant: <span id="who">—</span></div>
-  </header>
+<header>
+  <h1>Discipleship 90-Day Dashboard</h1>
+  <div class="who">Participant: <span id="who">—</span></div>
+</header>
 
-  <div class="wrap">
-    <!-- KPI CARDS -->
-    <div class="grid kpis">
-      <div class="card">
-        <h3>Overall Attainment</h3>
-        <div id="attainment" class="big">—</div>
-        <div id="attnFlag" class="pill">—</div>
-      </div>
-      <div class="card">
-        <h3>On-Track vs Expected</h3>
-        <div id="ontrack" class="big">—</div>
-        <div class="sub">Completed vs expected (today)</div>
-      </div>
-      <div class="card">
-        <h3>Days Passed / Left</h3>
-        <div id="days" class="big">—</div>
-        <div id="period" class="sub"></div>
-      </div>
-      <div class="card">
-        <h3>Weakest Area</h3>
-        <div id="weak" class="big">—</div>
-        <div class="sub">Focus here this week</div>
-      </div>
+<div class="wrap">
+  <!-- KPI CARDS -->
+  <div class="grid kpis">
+    <div class="card"><h3>Overall Attainment</h3><div id="attainment" class="big">—</div><div id="attnFlag" class="pill">—</div></div>
+    <div class="card"><h3>On-Track vs Expected</h3><div id="ontrack" class="big">—</div><div class="sub">Completed vs expected (today)</div></div>
+    <div class="card"><h3>Days Passed / Left</h3><div id="days" class="big">—</div><div id="period" class="sub"></div></div>
+    <div class="card"><h3>Weakest Area</h3><div id="weak" class="big">—</div><div class="sub">Focus here this week</div></div>
+  </div>
+
+  <!-- MID -->
+  <div class="grid mid section" style="margin-top:18px;">
+    <div class="card"><h2>Weekly Attainment Trend</h2><canvas id="trend"></canvas></div>
+    <div class="card"><h2>Practice Balance (Radar)</h2><canvas id="radar"></canvas><div id="projection" class="sub" style="margin-top:8px"></div></div>
+  </div>
+
+  <!-- BOTTOM -->
+  <div class="grid bottom section" style="margin-top:18px;">
+    <div class="card">
+      <h2>Daily Consistency Heatmap (last 6 weeks)</h2>
+      <div id="heat" class="heat"></div>
+      <div id="streaks" class="sub" style="margin-top:10px"></div>
     </div>
-
-    <!-- MID ROW -->
-    <div class="grid mid section" style="margin-top:18px;">
-      <div class="card">
-        <h2>Weekly Attainment Trend</h2>
-        <canvas id="trend"></canvas>
-      </div>
-      <div class="card">
-        <h2>Practice Balance (Radar)</h2>
-        <canvas id="radar"></canvas>
-        <div id="projection" class="sub" style="margin-top:8px"></div>
-      </div>
-    </div>
-
-    <!-- BOTTOM ROW -->
-    <div class="grid bottom section" style="margin-top:18px;">
-      <div class="card">
-        <h2>Daily Consistency Heatmap (last 6 weeks)</h2>
-        <div id="heat" class="heat"></div>
-        <div id="streaks" class="sub" style="margin-top:10px"></div>
-      </div>
-      <div class="card">
-        <div class="row" style="justify-content:space-between;">
-          <h2>Reasons Mentioned (Bag of Words)</h2>
-          <span id="cloudHint" class="sub"></span>
-        </div>
-        <div id="cloud" class="cloud"></div>
-        <div style="margin-top:14px">
-          <h2 style="margin-bottom:8px">Weekly Commitments (latest week)</h2>
-          <canvas id="donut"></canvas>
-        </div>
+    <div class="card">
+      <div class="row"><h2>Reasons Mentioned (Bag of Words)</h2><span id="cloudHint" class="sub"></span></div>
+      <div id="cloud" class="cloud"></div>
+      <div style="margin-top:14px">
+        <h2 style="margin-bottom:8px">Weekly Commitments (latest week)</h2>
+        <canvas id="donut"></canvas>
       </div>
     </div>
   </div>
+</div>
 
 <script>
-  /* ===========================
-     CONFIG: add your CSV links
-     =========================== */
-  const FACT_CSV_URL = "https://docs.google.com/spreadsheets/d/e/2PACX-1vQERkbRqvUyktHeUw-DvLVNNIzvR50N0oHC-bpDwx6Lj33-o9uIiGN-ucd9r80Tq3l5_WroECTpI-gz/pub?gid=262595972&single=true&output=csv";
-  const COMMENTS_CSV_URL = "PASTE_form_responses_PUBLISHED_CSV_URL_HERE";
-
+  /* ======= CONFIG ======= */
+  const FACT_CSV_URL = "https://docs.google.com/spreadsheets/d/e/2PACX-1vQERkbRqvUyktHeUw-DvLVNNIzvR50N0oHC-bpDwx6Lj33-o9uIiGN-ucd9r80Tq3l5_WroECTpI-gz/pub?gid=262595972&single=true&output=csv"; // publish fact_commitments as CSV and paste link
   const TARGET = 0.95;
   const DAILY_PRACTICES = new Set(["Bible Reading","Morning Intimacy","Midnight Intercessory Prayer"]);
 
+  /* ======= HELPERS ======= */
   const pid = (new URLSearchParams(location.search).get("id") || "").trim().toLowerCase();
   document.getElementById("who").textContent = pid || "(add ?id=email)";
 
@@ -156,98 +99,110 @@
       return o;
     });
   }
-  function ymd(d){return d.toISOString().slice(0,10)}
-  function sod(d){const x=new Date(d); x.setHours(0,0,0,0); return x;}
-  function pd(s){const d=new Date(s); return isNaN(d)?null:d;}
-
-  async function fetchCSV(url){ const r=await fetch(url + (url.includes("?")?"&":"?") + "cb="+Date.now()); return csvToRows(await r.text()); }
-
+  function ymd(d){ return d.toISOString().slice(0,10); }
+  function sod(d){ const x=new Date(d); x.setHours(0,0,0,0); return x; }
+  function pd(s){ const d=new Date(s); return isNaN(d)?null:d; }
   function pct(x){ return (Math.round(x*1000)/10).toFixed(1)+"%"; }
 
-  function longestStreak(vals){ // vals is array of 0/1 in chronological order
-    let best=0,cur=0;
-    for (const v of vals){ cur = v?cur+1:0; best = Math.max(best,cur); }
-    return best;
+  function getRowPid(row){
+    // tolerant to header cases
+    const cands = ["participant_id","Email Address","email address","Email","email"];
+    for (const want of cands){
+      const found = Object.keys(row).find(h => h.toLowerCase()===want.toLowerCase());
+      if (found && row[found]) return String(row[found]).trim().toLowerCase();
+    }
+    return "";
   }
+
+  function longestStreak(vals){ let best=0,cur=0; for(const v of vals){ cur=v?cur+1:0; best=Math.max(best,cur); } return best; }
+
+  async function fetchCSV(url){ const r=await fetch(url+(url.includes("?")?"&":"?")+"cb="+Date.now()); return csvToRows(await r.text()); }
 
   (async function main(){
     if(!pid) return;
 
-    // 1) DATA
-    const [factAll, commentsAll] = await Promise.all([fetchCSV(FACT_CSV_URL), fetchCSV(COMMENTS_CSV_URL)]);
-    const fact = factAll.filter(r => (r.participant_id||"").toLowerCase()===pid);
-    const comments = commentsAll.filter(r => (r["Email Address"]||"").toLowerCase()===pid);
+    const factAll = await fetchCSV(FACT_CSV_URL);
+    // filter for this person
+    const fact = factAll.filter(r => getRowPid(r)===pid);
 
     if (!fact.length){
       document.body.insertAdjacentHTML("beforeend","<div class='wrap'><p>No data yet for this participant.</p></div>");
       return;
     }
 
-    // window math
+    // Program timing
     const weekStarts = fact.map(r=>pd(r.week_start)).filter(Boolean).sort((a,b)=>a-b);
     const programStart = sod(weekStarts[0]);
     const today = sod(new Date());
     const dayNum = Math.max(1, Math.min(90, Math.floor((today - programStart)/(1000*60*60*24))+1));
     const daysLeft = Math.max(0, 90 - dayNum);
     const totalWeeksFinal = 13; // ceil(90/7)
-    const possibleSoFar = fact.length;
-    const completedSoFar = fact.reduce((a,r)=>a + Number(r.value||0), 0);
-    const attainment = possibleSoFar ? (completedSoFar/possibleSoFar) : 0;
 
-    // Expected line for “today”
+    // Aggregations
+    let completed=0, possible=0;
+    const byPractice={}, byWeek={}, byDayAgg={};
+    const comments = []; // collect from comment_general + comment_other
+
+    fact.forEach(r=>{
+      const val = Number(r.value||0);
+      possible += 1; completed += val;
+
+      const prac = r.practice;
+      byPractice[prac] = byPractice[prac] || {done:0,total:0};
+      byPractice[prac].done += val; byPractice[prac].total += 1;
+
+      const wk = r.week_start;
+      byWeek[wk] = byWeek[wk] || {done:0,total:0};
+      byWeek[wk].done += val; byWeek[wk].total += 1;
+
+      if (DAILY_PRACTICES.has(prac)) {
+        byDayAgg[r.date] = (byDayAgg[r.date]||0) + val; // 0..3
+      }
+
+      const cg = (r.comment_general||"").trim();
+      const co = (r.comment_other||"").trim();
+      if (cg) comments.push(cg);
+      if (co) comments.push(co);
+    });
+
+    // KPIs
+    const attainment = possible ? (completed/possible) : 0;
     const weeksElapsed = Math.max(1, Math.ceil(dayNum/7));
     const expectedPossible = (dayNum*3) + (weeksElapsed*4);
     const expectedCompletedFor95 = expectedPossible * TARGET;
-    const variance = completedSoFar - expectedCompletedFor95;
+    const variance = completed - expectedCompletedFor95;
 
-    // Total program possible
+    // Projected finish & improvement
     const totalPossible = (90*3) + (totalWeeksFinal*4);
-    const currentPace = attainment; // same ratio likely to continue
-    const projectedFinalCompleted = completedSoFar + currentPace*(totalPossible - possibleSoFar);
+    const projectedFinalCompleted = completed + attainment*(totalPossible - possible);
     const projectedFinalPct = projectedFinalCompleted / totalPossible;
-
-    // Improvement math
     const targetFinalCompleted = TARGET * totalPossible;
     const shortfall = Math.max(0, targetFinalCompleted - projectedFinalCompleted);
     const weeksLeft = Math.max(0, totalWeeksFinal - weeksElapsed);
     const neededPerWeek = weeksLeft ? (shortfall / weeksLeft) : shortfall;
 
-    // Weakest area + practice stats
-    const byPractice = {};
-    const byWeek = {};
-    const byDayAgg = {}; // sum of daily practices per date [0..3]
-    fact.forEach(r=>{
-      const val = Number(r.value||0);
-      byPractice[r.practice] = byPractice[r.practice] || {done:0,total:0};
-      byPractice[r.practice].done += val; byPractice[r.practice].total += 1;
-
-      byWeek[r.week_start] = byWeek[r.week_start] || {done:0,total:0};
-      byWeek[r.week_start].done += val; byWeek[r.week_start].total += 1;
-
-      if (DAILY_PRACTICES.has(r.practice)) {
-        byDayAgg[r.date] = (byDayAgg[r.date]||0) + val; // 0..3
-      }
-    });
+    // Weakest area
     let weakest=null, weakestPct=1;
     Object.keys(byPractice).forEach(k=>{
       const p = byPractice[k]; const ratio = p.total ? p.done/p.total : 0;
       if (ratio < weakestPct){ weakest=k; weakestPct=ratio; }
     });
 
-    // 2) KPIs
-    document.getElementById("attainment").textContent = pct(attainment);
+    // Update KPI cards
+    const attnEl = document.getElementById("attainment");
     const flag = document.getElementById("attnFlag");
+    attnEl.textContent = pct(attainment);
     const cls = attainment>=TARGET ? "ok" : (attainment>=0.8 ? "warn" : "bad");
     flag.className = "pill " + cls;
     flag.textContent = attainment>=TARGET ? "On pace for 95%+" : (attainment>=0.8 ? "Needs push" : "At risk");
 
-    document.getElementById("ontrack").textContent = (variance>=0?"+":"") + Math.round(variance*10)/10;
+    document.getElementById("ontrack").textContent = (variance>=0?"+":"")+Math.round(variance*10)/10;
     document.getElementById("days").textContent = `Day ${dayNum} / 90 — ${daysLeft} left`;
     document.getElementById("period").textContent = `Program started ${ymd(programStart)}`;
     document.getElementById("weak").textContent = weakest ? `${weakest} (${pct(weakestPct)})` : "—";
 
-    // 3) Charts
-    // Weekly trend
+    // Charts
+    // Weekly line
     const wLabels = Object.keys(byWeek).sort();
     const wPct = wLabels.map(w => {
       const a = byWeek[w]; return a.total ? Math.round(1000*(a.done/a.total))/10 : 0;
@@ -255,12 +210,12 @@
     new Chart(document.getElementById("trend"), {
       type:"line",
       data:{ labels:wLabels, datasets:[{ label:"Weekly Attainment %", data:wPct, borderWidth:3, tension:.25 }] },
-      options:{ responsive:true, plugins:{ legend:{display:true} }, scales:{ y:{ suggestedMin:0, suggestedMax:100 }}}
+      options:{ responsive:true, scales:{ y:{ suggestedMin:0, suggestedMax:100 } } }
     });
 
-    // Radar: balance across practices
+    // Radar
     const pLabels = Object.keys(byPractice);
-    const pPct = pLabels.map(k => byPractice[k].done / byPractice[k].total * 100);
+    const pPct = pLabels.map(k => byPractice[k].done/byPractice[k].total*100);
     new Chart(document.getElementById("radar"), {
       type:"radar",
       data:{ labels:pLabels, datasets:[{ label:"% Attainment by Practice", data:pPct, borderWidth:2, pointRadius:3 }] },
@@ -268,30 +223,28 @@
     });
     document.getElementById("projection").textContent =
       `Projected finish at ${pct(projectedFinalPct)}. ` +
-      (shortfall>0 ? `To hit 95%, aim for ~${Math.ceil(neededPerWeek)} additional unit(s) per week for the remaining ${weeksLeft} week(s).` : `You're on track for 95%+ 🎉`);
+      (shortfall>0 ? `To hit 95%, aim for ~${Math.ceil(neededPerWeek)} more unit(s) per week for the remaining ${weeksLeft} week(s).`
+                    : `You're on track for 95%+ 🎉`);
 
-    // Heatmap for last 42 days
+    // Heatmap last 42 days
     const dKeys = Object.keys(byDayAgg).sort().slice(-42);
     const heat = document.getElementById("heat");
     dKeys.forEach(k=>{
-      const v = byDayAgg[k]; // 0..3
-      const pct = v/3;
-      const cls = pct>=1 ? "c100" : pct>=.66 ? "c66" : pct>=.33 ? "c33" : "c0";
+      const v = byDayAgg[k]; const ratio = v/3;
+      const cls2 = ratio>=1 ? "c100" : ratio>=.66 ? "c66" : ratio>=.33 ? "c33" : "c0";
       const cell = document.createElement("div");
-      cell.className = "cell " + cls; cell.title = `${k}: ${(pct*100).toFixed(0)}%`;
+      cell.className = "cell "+cls2; cell.title = `${k}: ${(ratio*100).toFixed(0)}%`;
       heat.appendChild(cell);
     });
 
-    // Streaks (overall across 3 daily practices)
-    const orderedDaily = dKeys.map(k => byDayAgg[k] >= 3 ? 1 : 0); // “full day” when all 3 done
+    // Streaks: full day = all 3 daily completed
+    const orderedDaily = dKeys.map(k => byDayAgg[k] >= 3 ? 1 : 0);
     const longest = longestStreak(orderedDaily);
-    const current = (()=>{
-      let c=0; for (let i=orderedDaily.length-1;i>=0;i--){ if(orderedDaily[i]) c++; else break; } return c;
-    })();
+    const current = (()=>{ let c=0; for(let i=orderedDaily.length-1;i>=0;i--){ if(orderedDaily[i]) c++; else break; } return c; })();
     document.getElementById("streaks").textContent =
       `Longest full-day streak: ${longest} day(s) · Current full-day streak: ${current} day(s)`;
 
-    // Donut: latest week weekly-commitments distribution (1 / 0.5 / 0)
+    // Donut for latest week (weekly commitments only)
     const latestWeek = wLabels[wLabels.length-1];
     const weeklyRows = fact.filter(r => r.unit_type==="weekly" && r.week_start===latestWeek);
     const counts = {full:0, partial:0, none:0};
@@ -301,31 +254,31 @@
     });
     new Chart(document.getElementById("donut"), {
       type:"doughnut",
-      data:{ labels:["Fully","Partially","Not"], datasets:[{ data:[counts.full, counts.partial, counts.none] }]},
+      data:{ labels:["Fully","Partially","Not"], datasets:[{ data:[counts.full, counts.partial, counts.none] }] },
       options:{ responsive:true, plugins:{ legend:{position:"bottom"} } }
     });
 
-    // Bag of words (reasons)
+    // Bag of words from comment_general + comment_other
+    const STOP = new Set(("the a an and or to of in for with on at is are am be this that it as i we you they he she was were have has had from by not n/a na week weeks day days because due just really very").split(" "));
     const cloudEl = document.getElementById("cloud");
-    const commentKey = Object.keys(comments[0]||{}).find(k => k.toLowerCase().startsWith("please make a general comment"));
     const words = {};
-    const STOP = new Set(("the a an and or to of in for with on at is are am be this that it as i we you they he she was were have has had from by not n/a n a").split(" "));
-    let samples=0;
-    comments.forEach(r=>{
-      const raw = (r[commentKey]||"").toLowerCase().trim();
-      if (!raw || raw==="n/a") return;
+    let samples = 0;
+
+    fact.forEach(r=>{
+      const text = [(r.comment_general||""), (r.comment_other||"")].join(" ").toLowerCase().trim();
+      if (!text || text==="n/a" || text==="na") return;
       samples++;
-      raw.replace(/[^a-z0-9\s]/g," ").split(/\s+/).forEach(w=>{
+      text.replace(/[^a-z0-9\s]/g," ").split(/\s+/).forEach(w=>{
         if(!w || STOP.has(w)) return;
         words[w] = (words[w]||0)+1;
       });
     });
+
     const entries = Object.entries(words).sort((a,b)=>b[1]-a[1]).slice(0,25);
     const max = entries[0]?.[1] || 1;
     entries.forEach(([w,c])=>{
       const span = document.createElement("span");
-      const weight = c/max;
-      const bucket = weight>.8?5: weight>.6?4: weight>.4?3: weight>.2?2:1;
+      const bucket = (c/max>.8)?5:(c/max>.6)?4:(c/max>.4)?3:(c/max>.2)?2:1;
       span.className = "tag w"+bucket;
       span.textContent = w + " ("+c+")";
       cloudEl.appendChild(span);

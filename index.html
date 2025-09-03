@@ -1,724 +1,337 @@
 <!doctype html>
-<html>
+<html lang="en">
 <head>
-<meta charset="utf-8">
-<title>90-Day Spiritual Journey Dashboard</title>
-<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>Discipleship 90-Day Dashboard</title>
+
+<!-- Charts -->
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+
 <style>
-  * { margin: 0; padding: 0; box-sizing: border-box; }
-  
-  body { 
-    font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif; 
-    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-    min-height: 100vh;
-    color: #1a202c;
+  :root{
+    --bg:#f7f9fc;
+    --card:#ffffff;
+    --ink:#1f2937;
+    --muted:#6b7280;
+    --ok:#16a34a;
+    --warn:#f59e0b;
+    --bad:#ef4444;
+    --accent:#2563eb;
+    --shadow: 0 8px 24px rgba(0,0,0,.06);
+    --radius: 16px;
   }
-  
-  .container { 
-    max-width: 1400px; 
-    margin: 0 auto; 
-    padding: 20px;
+  *{box-sizing:border-box}
+  body{margin:0; background:var(--bg); color:var(--ink); font-family: ui-sans-serif, system-ui, -apple-system, Segoe UI, Roboto, "Helvetica Neue", Arial;}
+  header{padding:20px 24px 8px; display:flex; justify-content:space-between; align-items:center;}
+  header h1{margin:0; font-size: clamp(20px, 3vw, 28px);}
+  header .who{color:var(--muted); font-size:14px}
+  .wrap{padding:0 24px 40px; max-width:1200px; margin:0 auto;}
+
+  /* GRID LAYOUT */
+  .grid{display:grid; gap:18px;}
+  .kpis{grid-template-columns: repeat(4, minmax(0,1fr));}
+  .mid{grid-template-columns: 2fr 1.4fr;}
+  .bottom{grid-template-columns: 1.6fr 1.4fr;}
+  @media (max-width: 980px){
+    .kpis{grid-template-columns: repeat(2, minmax(0,1fr));}
+    .mid, .bottom{grid-template-columns: 1fr;}
   }
-  
-  .header {
-    text-align: center;
-    margin-bottom: 40px;
-    color: white;
-  }
-  
-  .header h1 {
-    font-size: 2.5rem;
-    font-weight: 700;
-    margin-bottom: 8px;
-    text-shadow: 0 2px 4px rgba(0,0,0,0.3);
-  }
-  
-  .participant-info {
-    background: rgba(255,255,255,0.15);
-    backdrop-filter: blur(10px);
-    border: 1px solid rgba(255,255,255,0.2);
-    border-radius: 16px;
-    padding: 16px;
-    color: white;
-    font-size: 1.1rem;
-    margin-bottom: 30px;
-  }
-  
-  .dashboard-grid {
-    display: grid;
-    grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
-    gap: 24px;
-    margin-bottom: 40px;
-  }
-  
-  .card {
-    background: rgba(255, 255, 255, 0.95);
-    border-radius: 20px;
-    padding: 24px;
-    box-shadow: 0 8px 32px rgba(0,0,0,0.12);
-    border: 1px solid rgba(255,255,255,0.2);
-    transition: transform 0.2s ease, box-shadow 0.2s ease;
-    backdrop-filter: blur(10px);
-  }
-  
-  .card:hover {
-    transform: translateY(-4px);
-    box-shadow: 0 12px 48px rgba(0,0,0,0.15);
-  }
-  
-  .card-title {
-    font-size: 0.875rem;
-    font-weight: 600;
-    color: #6b7280;
-    text-transform: uppercase;
-    letter-spacing: 0.05em;
-    margin-bottom: 8px;
-  }
-  
-  .card-value {
-    font-size: 2.25rem;
-    font-weight: 700;
-    margin-bottom: 8px;
-    line-height: 1;
-  }
-  
-  .card-subtitle {
-    font-size: 0.875rem;
-    color: #6b7280;
-    display: flex;
-    align-items: center;
-    gap: 6px;
-  }
-  
-  .progress-ring {
-    position: relative;
-    width: 80px;
-    height: 80px;
-    margin: 0 auto 16px;
-  }
-  
-  .progress-ring svg {
-    width: 100%;
-    height: 100%;
-    transform: rotate(-90deg);
-  }
-  
-  .progress-ring circle {
-    fill: none;
-    stroke-width: 6;
-  }
-  
-  .progress-bg { stroke: #e5e7eb; }
-  .progress-fill { 
-    stroke: #10b981; 
-    stroke-linecap: round;
-    transition: stroke-dashoffset 0.5s ease;
-  }
-  
-  .progress-text {
-    position: absolute;
-    top: 50%;
-    left: 50%;
-    transform: translate(-50%, -50%);
-    font-size: 1.125rem;
-    font-weight: 600;
-    color: #1f2937;
-  }
-  
-  .status-pill {
-    display: inline-flex;
-    align-items: center;
-    padding: 6px 12px;
-    border-radius: 20px;
-    font-size: 0.75rem;
-    font-weight: 600;
-    text-transform: uppercase;
-    letter-spacing: 0.05em;
-  }
-  
-  .status-excellent { background: #dcfce7; color: #166534; }
-  .status-good { background: #fef3c7; color: #92400e; }
-  .status-warning { background: #fee2e2; color: #991b1b; }
-  
-  .chart-container {
-    background: rgba(255, 255, 255, 0.95);
-    border-radius: 20px;
-    padding: 32px;
-    margin-bottom: 32px;
-    box-shadow: 0 8px 32px rgba(0,0,0,0.12);
-    backdrop-filter: blur(10px);
-  }
-  
-  .chart-title {
-    font-size: 1.25rem;
-    font-weight: 600;
-    margin-bottom: 20px;
-    color: #1f2937;
-  }
-  
-  .practices-grid {
-    display: grid;
-    grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
-    gap: 20px;
-    margin-bottom: 32px;
-  }
-  
-  .practice-card {
-    background: rgba(255, 255, 255, 0.95);
-    border-radius: 16px;
-    padding: 20px;
-    box-shadow: 0 4px 16px rgba(0,0,0,0.08);
-    border-left: 4px solid #10b981;
-  }
-  
-  .practice-name {
-    font-weight: 600;
-    margin-bottom: 12px;
-    font-size: 1.1rem;
-  }
-  
-  .practice-stats {
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-  }
-  
-  .practice-percentage {
-    font-size: 1.5rem;
-    font-weight: 700;
-    color: #10b981;
-  }
-  
-  .practice-bar {
-    height: 8px;
-    background: #e5e7eb;
-    border-radius: 4px;
-    overflow: hidden;
-    margin: 8px 0;
-  }
-  
-  .practice-bar-fill {
-    height: 100%;
-    background: linear-gradient(90deg, #10b981, #34d399);
-    border-radius: 4px;
-    transition: width 0.8s ease;
-  }
-  
-  .insights-section {
-    background: rgba(255, 255, 255, 0.95);
-    border-radius: 20px;
-    padding: 32px;
-    margin-bottom: 32px;
-    box-shadow: 0 8px 32px rgba(0,0,0,0.12);
-    backdrop-filter: blur(10px);
-  }
-  
-  .insights-title {
-    font-size: 1.25rem;
-    font-weight: 600;
-    margin-bottom: 20px;
-    color: #1f2937;
-    display: flex;
-    align-items: center;
-    gap: 8px;
-  }
-  
-  .insight-item {
-    background: #f8fafc;
-    border-left: 4px solid #3b82f6;
-    border-radius: 0 8px 8px 0;
-    padding: 16px;
-    margin-bottom: 12px;
-  }
-  
-  .loading {
-    display: flex;
-    justify-content: center;
-    align-items: center;
-    height: 200px;
-    font-size: 1.1rem;
-    color: white;
-  }
-  
-  .spinner {
-    width: 40px;
-    height: 40px;
-    border: 4px solid rgba(255,255,255,0.3);
-    border-top: 4px solid white;
-    border-radius: 50%;
-    animation: spin 1s linear infinite;
-    margin-right: 12px;
-  }
-  
-  @keyframes spin {
-    0% { transform: rotate(0deg); }
-    100% { transform: rotate(360deg); }
-  }
-  
-  .trend-indicator {
-    display: inline-flex;
-    align-items: center;
-    gap: 4px;
-    font-size: 0.875rem;
-    font-weight: 500;
-  }
-  
-  .trend-up { color: #10b981; }
-  .trend-down { color: #ef4444; }
-  .trend-stable { color: #6b7280; }
-  
-  .weekly-calendar {
-    display: grid;
-    grid-template-columns: repeat(7, 1fr);
-    gap: 8px;
-    margin-top: 16px;
-  }
-  
-  .calendar-day {
-    aspect-ratio: 1;
-    border-radius: 8px;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    font-size: 0.75rem;
-    font-weight: 500;
-    border: 2px solid #e5e7eb;
-  }
-  
-  .calendar-day.completed {
-    background: #10b981;
-    color: white;
-    border-color: #10b981;
-  }
-  
-  .calendar-day.partial {
-    background: #f59e0b;
-    color: white;
-    border-color: #f59e0b;
-  }
-  
-  @media (max-width: 768px) {
-    .header h1 { font-size: 2rem; }
-    .dashboard-grid { grid-template-columns: 1fr; }
-    .practices-grid { grid-template-columns: 1fr; }
-    .container { padding: 16px; }
-  }
+
+  /* CARDS */
+  .card{background:var(--card); border-radius:var(--radius); box-shadow:var(--shadow); padding:16px 16px;}
+  .card h3{margin:0 0 8px; font-size:16px; color:var(--muted); font-weight:600; letter-spacing:.2px}
+  .big{font-size: clamp(22px, 4vw, 30px); margin: 6px 0 4px; font-weight:800}
+  .sub{font-size:12px; color:var(--muted)}
+  .pill{display:inline-block; padding:4px 10px; border-radius:999px; border:1px solid #e5e7eb; font-size:12px; font-weight:600; margin-top:6px}
+  .ok{background:#e8f8ee; color:#065f46}
+  .warn{background:#fff7e6; color:#92400e}
+  .bad{background:#fdeaea; color:#991b1b}
+
+  /* SECTION TITLES */
+  .section h2{font-size:18px; margin:0 0 12px; color:#111827}
+  canvas{width:100%; height:auto; max-height:420px}
+
+  /* HEATMAP (CSS grid) */
+  .heat{display:grid; grid-template-columns: repeat(14, 1fr); gap:3px}
+  .cell{height:18px; border-radius:4px; background:#e5e7eb}
+  .c0{background:#eef2ff}
+  .c33{background:#c7d2fe}
+  .c66{background:#93c5fd}
+  .c100{background:#60a5fa}
+
+  /* TAG CLOUD */
+  .cloud{display:flex; flex-wrap:wrap; gap:10px}
+  .tag{border-radius:20px; padding:6px 10px; background:#eef2ff; color:#1e3a8a; font-weight:600}
+  .w1{font-size:12px} .w2{font-size:14px} .w3{font-size:16px}
+  .w4{font-size:18px} .w5{font-size:22px}
+  .muted{color:var(--muted)}
+  .row{display:flex; gap:18px; align-items:center}
 </style>
 </head>
 <body>
-  <div class="container">
-    <div class="header">
-      <h1>✨ 90-Day Spiritual Journey</h1>
-      <div class="participant-info">
-        <strong>Participant:</strong> <span id="pid">Loading...</span>
+  <header>
+    <h1>Discipleship 90-Day Dashboard</h1>
+    <div class="who">Participant: <span id="who">—</span></div>
+  </header>
+
+  <div class="wrap">
+    <!-- KPI CARDS -->
+    <div class="grid kpis">
+      <div class="card">
+        <h3>Overall Attainment</h3>
+        <div id="attainment" class="big">—</div>
+        <div id="attnFlag" class="pill">—</div>
+      </div>
+      <div class="card">
+        <h3>On-Track vs Expected</h3>
+        <div id="ontrack" class="big">—</div>
+        <div class="sub">Completed vs expected (today)</div>
+      </div>
+      <div class="card">
+        <h3>Days Passed / Left</h3>
+        <div id="days" class="big">—</div>
+        <div id="period" class="sub"></div>
+      </div>
+      <div class="card">
+        <h3>Weakest Area</h3>
+        <div id="weak" class="big">—</div>
+        <div class="sub">Focus here this week</div>
       </div>
     </div>
 
-    <div id="loading" class="loading">
-      <div class="spinner"></div>
-      Loading your spiritual journey insights...
+    <!-- MID ROW -->
+    <div class="grid mid section" style="margin-top:18px;">
+      <div class="card">
+        <h2>Weekly Attainment Trend</h2>
+        <canvas id="trend"></canvas>
+      </div>
+      <div class="card">
+        <h2>Practice Balance (Radar)</h2>
+        <canvas id="radar"></canvas>
+        <div id="projection" class="sub" style="margin-top:8px"></div>
+      </div>
     </div>
 
-    <div id="dashboard" style="display:none;">
-      <div class="dashboard-grid">
-        <div class="card">
-          <div class="card-title">Overall Progress</div>
-          <div class="progress-ring">
-            <svg>
-              <circle class="progress-bg" cx="40" cy="40" r="36"></circle>
-              <circle class="progress-fill" cx="40" cy="40" r="36" 
-                      stroke-dasharray="226" stroke-dashoffset="226" id="progress-circle"></circle>
-            </svg>
-            <div class="progress-text" id="progress-percent">0%</div>
-          </div>
-          <div class="card-subtitle">
-            <span id="progress-status" class="status-pill">Calculating...</span>
-          </div>
-        </div>
-
-        <div class="card">
-          <div class="card-title">Journey Progress</div>
-          <div class="card-value" id="days-progress">Day 0 / 90</div>
-          <div class="card-subtitle">
-            <span id="days-left">90 days remaining</span>
-          </div>
-        </div>
-
-        <div class="card">
-          <div class="card-title">Momentum</div>
-          <div class="card-value" id="momentum-score">—</div>
-          <div class="card-subtitle">
-            <span id="momentum-trend" class="trend-indicator">Calculating trend...</span>
-          </div>
-        </div>
-
-        <div class="card">
-          <div class="card-title">Focus Area</div>
-          <div class="card-value" id="focus-area">—</div>
-          <div class="card-subtitle">Needs attention this week</div>
-        </div>
+    <!-- BOTTOM ROW -->
+    <div class="grid bottom section" style="margin-top:18px;">
+      <div class="card">
+        <h2>Daily Consistency Heatmap (last 6 weeks)</h2>
+        <div id="heat" class="heat"></div>
+        <div id="streaks" class="sub" style="margin-top:10px"></div>
       </div>
-
-      <div class="chart-container">
-        <div class="chart-title">📈 Weekly Progress Trend</div>
-        <div style="position: relative; height: 300px;">
-          <canvas id="trendChart"></canvas>
+      <div class="card">
+        <div class="row" style="justify-content:space-between;">
+          <h2>Reasons Mentioned (Bag of Words)</h2>
+          <span id="cloudHint" class="sub"></span>
         </div>
-      </div>
-
-      <div class="chart-container">
-        <div class="chart-title">📊 Daily Consistency Heatmap (Last 6 Weeks)</div>
-        <div style="position: relative; height: 200px;">
-          <canvas id="heatmapChart"></canvas>
-        </div>
-      </div>
-
-      <div class="practices-grid" id="practicesGrid">
-        <!-- Practice cards will be inserted here -->
-      </div>
-
-      <div class="insights-section">
-        <div class="insights-title">
-          🎯 Personalized Insights
-        </div>
-        <div id="insights-container">
-          <!-- Insights will be generated here -->
+        <div id="cloud" class="cloud"></div>
+        <div style="margin-top:14px">
+          <h2 style="margin-bottom:8px">Weekly Commitments (latest week)</h2>
+          <canvas id="donut"></canvas>
         </div>
       </div>
     </div>
   </div>
 
-  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
-  <script src="https://cdn.jsdelivr.net/npm/chartjs-adapter-date-fns/dist/chartjs-adapter-date-fns.bundle.min.js"></script>
-  <script>
-    const CSV_URL = "https://docs.google.com/spreadsheets/d/e/2PACX-1vQERkbRqvUyktHeUw-DvLVNNIzvR50N0oHC-bpDwx6Lj33-o9uIiGN-ucd9r80Tq3l5_WroECTpI-gz/pub?gid=262595972&single=true&output=csv";
-    const TARGET = 0.95;
-    const DAILY_PRACTICES = new Set(["Bible Reading","Morning Intimacy","Midnight Intercessory Prayer"]);
-    
-    const qs = new URLSearchParams(location.search);
-    const PID = (qs.get("id") || "").trim().toLowerCase();
+<script>
+  /* ===========================
+     CONFIG: add your CSV links
+     =========================== */
+  const FACT_CSV_URL = "PASTE_fact_commitments_PUBLISHED_CSV_URL_HERE";
+  const COMMENTS_CSV_URL = "PASTE_form_responses_PUBLISHED_CSV_URL_HERE";
 
-    function csvToRows(text) {
-      const lines = text.trim().split(/\r?\n/);
-      const header = lines.shift().split(",");
-      return lines.map(line => {
-        const cols = line.split(/,(?=(?:[^"]*"[^"]*")*[^"]*$)/).map(s => s.replace(/^"|"$/g,""));
-        const obj = {};
-        header.forEach((h,i)=> obj[h.trim()] = (cols[i]||"").trim());
-        return obj;
+  const TARGET = 0.95;
+  const DAILY_PRACTICES = new Set(["Bible Reading","Morning Intimacy","Midnight Intercessory Prayer"]);
+
+  const pid = (new URLSearchParams(location.search).get("id") || "").trim().toLowerCase();
+  document.getElementById("who").textContent = pid || "(add ?id=email)";
+
+  function csvToRows(text){
+    const lines = text.trim().split(/\r?\n/);
+    const header = lines.shift().split(",");
+    return lines.map(line=>{
+      const cols = line.split(/,(?=(?:[^"]*"[^"]*")*[^"]*$)/).map(s=>s.replace(/^"|"$/g,""));
+      const o={}; header.forEach((h,i)=>o[h.trim()]= (cols[i]||"").trim());
+      return o;
+    });
+  }
+  function ymd(d){return d.toISOString().slice(0,10)}
+  function sod(d){const x=new Date(d); x.setHours(0,0,0,0); return x;}
+  function pd(s){const d=new Date(s); return isNaN(d)?null:d;}
+
+  async function fetchCSV(url){ const r=await fetch(url + (url.includes("?")?"&":"?") + "cb="+Date.now()); return csvToRows(await r.text()); }
+
+  function pct(x){ return (Math.round(x*1000)/10).toFixed(1)+"%"; }
+
+  function longestStreak(vals){ // vals is array of 0/1 in chronological order
+    let best=0,cur=0;
+    for (const v of vals){ cur = v?cur+1:0; best = Math.max(best,cur); }
+    return best;
+  }
+
+  (async function main(){
+    if(!pid) return;
+
+    // 1) DATA
+    const [factAll, commentsAll] = await Promise.all([fetchCSV(FACT_CSV_URL), fetchCSV(COMMENTS_CSV_URL)]);
+    const fact = factAll.filter(r => (r.participant_id||"").toLowerCase()===pid);
+    const comments = commentsAll.filter(r => (r["Email Address"]||"").toLowerCase()===pid);
+
+    if (!fact.length){
+      document.body.insertAdjacentHTML("beforeend","<div class='wrap'><p>No data yet for this participant.</p></div>");
+      return;
+    }
+
+    // window math
+    const weekStarts = fact.map(r=>pd(r.week_start)).filter(Boolean).sort((a,b)=>a-b);
+    const programStart = sod(weekStarts[0]);
+    const today = sod(new Date());
+    const dayNum = Math.max(1, Math.min(90, Math.floor((today - programStart)/(1000*60*60*24))+1));
+    const daysLeft = Math.max(0, 90 - dayNum);
+    const totalWeeksFinal = 13; // ceil(90/7)
+    const possibleSoFar = fact.length;
+    const completedSoFar = fact.reduce((a,r)=>a + Number(r.value||0), 0);
+    const attainment = possibleSoFar ? (completedSoFar/possibleSoFar) : 0;
+
+    // Expected line for “today”
+    const weeksElapsed = Math.max(1, Math.ceil(dayNum/7));
+    const expectedPossible = (dayNum*3) + (weeksElapsed*4);
+    const expectedCompletedFor95 = expectedPossible * TARGET;
+    const variance = completedSoFar - expectedCompletedFor95;
+
+    // Total program possible
+    const totalPossible = (90*3) + (totalWeeksFinal*4);
+    const currentPace = attainment; // same ratio likely to continue
+    const projectedFinalCompleted = completedSoFar + currentPace*(totalPossible - possibleSoFar);
+    const projectedFinalPct = projectedFinalCompleted / totalPossible;
+
+    // Improvement math
+    const targetFinalCompleted = TARGET * totalPossible;
+    const shortfall = Math.max(0, targetFinalCompleted - projectedFinalCompleted);
+    const weeksLeft = Math.max(0, totalWeeksFinal - weeksElapsed);
+    const neededPerWeek = weeksLeft ? (shortfall / weeksLeft) : shortfall;
+
+    // Weakest area + practice stats
+    const byPractice = {};
+    const byWeek = {};
+    const byDayAgg = {}; // sum of daily practices per date [0..3]
+    fact.forEach(r=>{
+      const val = Number(r.value||0);
+      byPractice[r.practice] = byPractice[r.practice] || {done:0,total:0};
+      byPractice[r.practice].done += val; byPractice[r.practice].total += 1;
+
+      byWeek[r.week_start] = byWeek[r.week_start] || {done:0,total:0};
+      byWeek[r.week_start].done += val; byWeek[r.week_start].total += 1;
+
+      if (DAILY_PRACTICES.has(r.practice)) {
+        byDayAgg[r.date] = (byDayAgg[r.date]||0) + val; // 0..3
+      }
+    });
+    let weakest=null, weakestPct=1;
+    Object.keys(byPractice).forEach(k=>{
+      const p = byPractice[k]; const ratio = p.total ? p.done/p.total : 0;
+      if (ratio < weakestPct){ weakest=k; weakestPct=ratio; }
+    });
+
+    // 2) KPIs
+    document.getElementById("attainment").textContent = pct(attainment);
+    const flag = document.getElementById("attnFlag");
+    const cls = attainment>=TARGET ? "ok" : (attainment>=0.8 ? "warn" : "bad");
+    flag.className = "pill " + cls;
+    flag.textContent = attainment>=TARGET ? "On pace for 95%+" : (attainment>=0.8 ? "Needs push" : "At risk");
+
+    document.getElementById("ontrack").textContent = (variance>=0?"+":"") + Math.round(variance*10)/10;
+    document.getElementById("days").textContent = `Day ${dayNum} / 90 — ${daysLeft} left`;
+    document.getElementById("period").textContent = `Program started ${ymd(programStart)}`;
+    document.getElementById("weak").textContent = weakest ? `${weakest} (${pct(weakestPct)})` : "—";
+
+    // 3) Charts
+    // Weekly trend
+    const wLabels = Object.keys(byWeek).sort();
+    const wPct = wLabels.map(w => {
+      const a = byWeek[w]; return a.total ? Math.round(1000*(a.done/a.total))/10 : 0;
+    });
+    new Chart(document.getElementById("trend"), {
+      type:"line",
+      data:{ labels:wLabels, datasets:[{ label:"Weekly Attainment %", data:wPct, borderWidth:3, tension:.25 }] },
+      options:{ responsive:true, plugins:{ legend:{display:true} }, scales:{ y:{ suggestedMin:0, suggestedMax:100 }}}
+    });
+
+    // Radar: balance across practices
+    const pLabels = Object.keys(byPractice);
+    const pPct = pLabels.map(k => byPractice[k].done / byPractice[k].total * 100);
+    new Chart(document.getElementById("radar"), {
+      type:"radar",
+      data:{ labels:pLabels, datasets:[{ label:"% Attainment by Practice", data:pPct, borderWidth:2, pointRadius:3 }] },
+      options:{ responsive:true, scales:{ r:{ suggestedMin:0, suggestedMax:100 } } }
+    });
+    document.getElementById("projection").textContent =
+      `Projected finish at ${pct(projectedFinalPct)}. ` +
+      (shortfall>0 ? `To hit 95%, aim for ~${Math.ceil(neededPerWeek)} additional unit(s) per week for the remaining ${weeksLeft} week(s).` : `You're on track for 95%+ 🎉`);
+
+    // Heatmap for last 42 days
+    const dKeys = Object.keys(byDayAgg).sort().slice(-42);
+    const heat = document.getElementById("heat");
+    dKeys.forEach(k=>{
+      const v = byDayAgg[k]; // 0..3
+      const pct = v/3;
+      const cls = pct>=1 ? "c100" : pct>=.66 ? "c66" : pct>=.33 ? "c33" : "c0";
+      const cell = document.createElement("div");
+      cell.className = "cell " + cls; cell.title = `${k}: ${(pct*100).toFixed(0)}%`;
+      heat.appendChild(cell);
+    });
+
+    // Streaks (overall across 3 daily practices)
+    const orderedDaily = dKeys.map(k => byDayAgg[k] >= 3 ? 1 : 0); // “full day” when all 3 done
+    const longest = longestStreak(orderedDaily);
+    const current = (()=>{
+      let c=0; for (let i=orderedDaily.length-1;i>=0;i--){ if(orderedDaily[i]) c++; else break; } return c;
+    })();
+    document.getElementById("streaks").textContent =
+      `Longest full-day streak: ${longest} day(s) · Current full-day streak: ${current} day(s)`;
+
+    // Donut: latest week weekly-commitments distribution (1 / 0.5 / 0)
+    const latestWeek = wLabels[wLabels.length-1];
+    const weeklyRows = fact.filter(r => r.unit_type==="weekly" && r.week_start===latestWeek);
+    const counts = {full:0, partial:0, none:0};
+    weeklyRows.forEach(r=>{
+      const v=Number(r.value||0);
+      if (v>=0.99) counts.full++; else if (v>=0.49) counts.partial++; else counts.none++;
+    });
+    new Chart(document.getElementById("donut"), {
+      type:"doughnut",
+      data:{ labels:["Fully","Partially","Not"], datasets:[{ data:[counts.full, counts.partial, counts.none] }]},
+      options:{ responsive:true, plugins:{ legend:{position:"bottom"} } }
+    });
+
+    // Bag of words (reasons)
+    const cloudEl = document.getElementById("cloud");
+    const commentKey = Object.keys(comments[0]||{}).find(k => k.toLowerCase().startsWith("please make a general comment"));
+    const words = {};
+    const STOP = new Set(("the a an and or to of in for with on at is are am be this that it as i we you they he she was were have has had from by not n/a n a").split(" "));
+    let samples=0;
+    comments.forEach(r=>{
+      const raw = (r[commentKey]||"").toLowerCase().trim();
+      if (!raw || raw==="n/a") return;
+      samples++;
+      raw.replace(/[^a-z0-9\s]/g," ").split(/\s+/).forEach(w=>{
+        if(!w || STOP.has(w)) return;
+        words[w] = (words[w]||0)+1;
       });
-    }
-
-    function ymd(d) { return d.toISOString().slice(0,10); }
-    function startOfDay(d){ const x=new Date(d); x.setHours(0,0,0,0); return x; }
-    function parseDate(s){ const d = new Date(s); return isNaN(d) ? null : d; }
-    function pctFmt(x) { return (Math.round(x*1000)/10).toFixed(1) + "%"; }
-
-    function updateProgressRing(percentage) {
-      const circle = document.getElementById('progress-circle');
-      const text = document.getElementById('progress-percent');
-      const circumference = 2 * Math.PI * 36;
-      const offset = circumference - (percentage / 100) * circumference;
-      circle.style.strokeDashoffset = offset;
-      text.textContent = Math.round(percentage) + '%';
-      
-      // Update color based on progress
-      if (percentage >= 95) {
-        circle.style.stroke = '#10b981';
-      } else if (percentage >= 80) {
-        circle.style.stroke = '#f59e0b';
-      } else {
-        circle.style.stroke = '#ef4444';
-      }
-    }
-
-    function getStatusPill(attainment) {
-      if (attainment >= TARGET) {
-        return '<span class="status-pill status-excellent">Excellent</span>';
-      } else if (attainment >= 0.8) {
-        return '<span class="status-pill status-good">Good Progress</span>';
-      } else {
-        return '<span class="status-pill status-warning">Needs Focus</span>';
-      }
-    }
-
-    function generateInsights(data, attainment, dayNum, byPractice) {
-      const insights = [];
-      
-      // Progress insight
-      if (attainment >= 0.95) {
-        insights.push("🌟 Outstanding commitment! You're excelling in your spiritual disciplines and on track to achieve your 90-day goal.");
-      } else if (attainment >= 0.8) {
-        insights.push("💪 Great progress! You're doing well but have room to strengthen your consistency in the coming weeks.");
-      } else {
-        insights.push("🎯 There's opportunity to grow! Focus on building consistent habits - small daily actions compound into transformational results.");
-      }
-
-      // Practice-specific insights
-      const practices = Object.entries(byPractice).map(([name, stats]) => ({
-        name,
-        percentage: stats.total ? stats.done / stats.total : 0
-      })).sort((a, b) => b.percentage - a.percentage);
-
-      if (practices.length > 0) {
-        const strongest = practices[0];
-        const weakest = practices[practices.length - 1];
-        
-        if (strongest.percentage > 0.9) {
-          insights.push(`⭐ Your ${strongest.name} practice is exemplary at ${pctFmt(strongest.percentage)}! This consistency is building a strong foundation.`);
-        }
-        
-        if (weakest.percentage < 0.7) {
-          insights.push(`🔧 Consider focusing extra attention on ${weakest.name} (${pctFmt(weakest.percentage)}). Try linking it to an existing strong habit.`);
-        }
-      }
-
-      // Time-based insights
-      const timeLeft = 90 - dayNum;
-      if (timeLeft <= 30 && attainment < 0.9) {
-        insights.push("⚡ You're in the final stretch! This is the perfect time to push for consistency and finish strong.");
-      } else if (timeLeft > 60 && attainment > 0.9) {
-        insights.push("🚀 Amazing early momentum! Maintain this rhythm and you'll exceed your 90-day goals.");
-      }
-
-      return insights;
-    }
-
-    function createPracticeCard(name, stats) {
-      const percentage = stats.total ? (stats.done / stats.total) * 100 : 0;
-      const completedCount = Math.round(stats.done);
-      
-      return `
-        <div class="practice-card">
-          <div class="practice-name">${name}</div>
-          <div class="practice-stats">
-            <span class="practice-percentage">${Math.round(percentage)}%</span>
-            <span style="font-size: 0.875rem; color: #6b7280;">${completedCount}/${stats.total}</span>
-          </div>
-          <div class="practice-bar">
-            <div class="practice-bar-fill" style="width: ${percentage}%"></div>
-          </div>
-        </div>
-      `;
-    }
-
-    async function main() {
-      document.getElementById('pid').textContent = PID || '(provide ?id=your_email)';
-      
-      if (!PID) {
-        document.getElementById('loading').innerHTML = '<div style="text-align: center; color: white;">Please add ?id=your_email to the URL to view your dashboard</div>';
-        return;
-      }
-
-      try {
-        const res = await fetch(CSV_URL);
-        const text = await res.text();
-        const rows = csvToRows(text).filter(r => r.participant_id.toLowerCase() === PID);
-
-        if (!rows.length) {
-          document.getElementById('loading').innerHTML = '<div style="text-align: center; color: white;">No data found for this participant. Please check your email address.</div>';
-          return;
-        }
-
-        // Calculate program progress
-        const weekStarts = rows.map(r => parseDate(r.week_start)).filter(Boolean).sort((a,b)=>a-b);
-        const programStart = startOfDay(weekStarts[0]);
-        const today = startOfDay(new Date());
-        const dayNum = Math.max(1, Math.min(90, Math.floor((today - programStart)/(1000*60*60*24)) + 1));
-        const daysLeft = Math.max(0, 90 - dayNum);
-
-        // Calculate statistics
-        let completed = 0, possible = 0;
-        const byPractice = {};
-        const byWeek = {};
-        const dailyData = [];
-
-        rows.forEach(r => {
-          const val = Number(r.value || 0);
-          const date = parseDate(r.date);
-          const wk = r.week_start;
-          
-          possible += 1;
-          completed += val;
-
-          byPractice[r.practice] = byPractice[r.practice] || {done:0, total:0};
-          byPractice[r.practice].done += val;
-          byPractice[r.practice].total += 1;
-
-          byWeek[wk] = byWeek[wk] || {done:0, total:0};
-          byWeek[wk].done += val;
-          byWeek[wk].total += 1;
-
-          if (DAILY_PRACTICES.has(r.practice) && date) {
-            dailyData.push({date: ymd(date), value: val, practice: r.practice});
-          }
-        });
-
-        const attainment = possible ? (completed / possible) : 0;
-        
-        // Update UI
-        document.getElementById('loading').style.display = 'none';
-        document.getElementById('dashboard').style.display = 'block';
-
-        updateProgressRing(attainment * 100);
-        document.getElementById('progress-status').innerHTML = getStatusPill(attainment);
-        document.getElementById('days-progress').textContent = `Day ${dayNum} / 90`;
-        document.getElementById('days-left').textContent = `${daysLeft} days remaining`;
-
-        // Calculate momentum (improvement over recent weeks)
-        const weekKeys = Object.keys(byWeek).sort();
-        let momentum = "Steady";
-        if (weekKeys.length >= 2) {
-          const recent = byWeek[weekKeys[weekKeys.length - 1]];
-          const previous = byWeek[weekKeys[weekKeys.length - 2]];
-          const recentPct = recent.total ? recent.done / recent.total : 0;
-          const prevPct = previous.total ? previous.done / previous.total : 0;
-          
-          if (recentPct > prevPct + 0.1) momentum = "Strong ↗️";
-          else if (recentPct < prevPct - 0.1) momentum = "Declining ↘️";
-        }
-        document.getElementById('momentum-score').textContent = momentum;
-
-        // Find focus area (weakest practice)
-        let weakest = null, weakestPct = 1;
-        Object.keys(byPractice).forEach(k => {
-          const pct = byPractice[k].total ? (byPractice[k].done/byPractice[k].total) : 0;
-          if (pct < weakestPct) { weakestPct = pct; weakest = k; }
-        });
-        document.getElementById('focus-area').textContent = weakest || "All practices";
-
-        // Create practice cards
-        const practicesHtml = Object.entries(byPractice)
-          .sort(([,a], [,b]) => (b.done/b.total) - (a.done/a.total))
-          .map(([name, stats]) => createPracticeCard(name, stats))
-          .join('');
-        document.getElementById('practicesGrid').innerHTML = practicesHtml;
-
-        // Generate insights
-        const insights = generateInsights(rows, attainment, dayNum, byPractice);
-        const insightsHtml = insights.map(insight => 
-          `<div class="insight-item">${insight}</div>`
-        ).join('');
-        document.getElementById('insights-container').innerHTML = insightsHtml;
-
-        // Create charts
-        createTrendChart(byWeek);
-        createHeatmapChart(dailyData);
-
-      } catch (error) {
-        console.error('Error loading data:', error);
-        document.getElementById('loading').innerHTML = '<div style="text-align: center; color: white;">Error loading data. Please try again later.</div>';
-      }
-    }
-
-    function createTrendChart(byWeek) {
-      const ctx = document.getElementById('trendChart').getContext('2d');
-      const weekLabels = Object.keys(byWeek).sort();
-      const weekData = weekLabels.map(w => {
-        const stats = byWeek[w];
-        return stats.total ? Math.round((stats.done / stats.total) * 100) : 0;
-      });
-
-      new Chart(ctx, {
-        type: 'line',
-        data: {
-          labels: weekLabels,
-          datasets: [{
-            label: 'Weekly Progress %',
-            data: weekData,
-            borderColor: '#10b981',
-            backgroundColor: 'rgba(16, 185, 129, 0.1)',
-            borderWidth: 3,
-            fill: true,
-            tension: 0.4,
-            pointBackgroundColor: '#10b981',
-            pointBorderColor: '#ffffff',
-            pointBorderWidth: 2,
-            pointRadius: 6
-          }]
-        },
-        options: {
-          responsive: true,
-          maintainAspectRatio: false,
-          plugins: {
-            legend: { display: false }
-          },
-          scales: {
-            y: {
-              beginAtZero: true,
-              max: 100,
-              ticks: {
-                callback: function(value) { return value + '%'; }
-              },
-              grid: { color: 'rgba(0,0,0,0.1)' }
-            },
-            x: {
-              grid: { color: 'rgba(0,0,0,0.1)' }
-            }
-          }
-        }
-      });
-    }
-
-    function createHeatmapChart(dailyData) {
-      // This is a simplified version - in a real implementation you might want to use a proper heatmap library
-      const ctx = document.getElementById('heatmapChart').getContext('2d');
-      
-      // Group by date and calculate average
-      const byDate = {};
-      dailyData.forEach(item => {
-        if (!byDate[item.date]) byDate[item.date] = [];
-        byDate[item.date].push(item.value);
-      });
-      
-      const dates = Object.keys(byDate).sort().slice(-42); // Last 6 weeks
-      const avgValues = dates.map(date => {
-        const values = byDate[date];
-        return values.length ? values.reduce((a,b) => a+b) / values.length : 0;
-      });
-
-      new Chart(ctx, {
-        type: 'bar',
-        data: {
-          labels: dates.map(d => new Date(d).toLocaleDateString()),
-          datasets: [{
-            label: 'Daily Consistency',
-            data: avgValues.map(v => Math.round(v * 100)),
-            backgroundColor: avgValues.map(v => {
-              if (v >= 0.9) return '#10b981';
-              if (v >= 0.7) return '#f59e0b';
-              return '#ef4444';
-            }),
-            borderRadius: 4,
-            borderSkipped: false
-          }]
-        },
-        options: {
-          responsive: true,
-          maintainAspectRatio: false,
-          plugins: {
-            legend: { display: false }
-          },
-          scales: {
-            y: {
-              beginAtZero: true,
-              max: 100,
-              ticks: {
-                callback: function(value) { return value + '%'; }
-              },
-              grid: { color: 'rgba(0,0,0,0.1)' }
-            },
-            x: {
-              grid: { display: false },
-              ticks: { maxRotation: 45 }
-            }
-          }
-        }
-      });
-    }
-
-    // Initialize dashboard
-    main();
-  </script>
+    });
+    const entries = Object.entries(words).sort((a,b)=>b[1]-a[1]).slice(0,25);
+    const max = entries[0]?.[1] || 1;
+    entries.forEach(([w,c])=>{
+      const span = document.createElement("span");
+      const weight = c/max;
+      const bucket = weight>.8?5: weight>.6?4: weight>.4?3: weight>.2?2:1;
+      span.className = "tag w"+bucket;
+      span.textContent = w + " ("+c+")";
+      cloudEl.appendChild(span);
+    });
+    document.getElementById("cloudHint").textContent = samples ? `${samples} comment(s)` : "No comments yet";
+  })();
+</script>
 </body>
 </html>

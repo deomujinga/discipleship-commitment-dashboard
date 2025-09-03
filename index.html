@@ -1,166 +1,344 @@
-/**
- * MAP YOUR EXACT FORM QUESTION TITLES HERE (case-sensitive)
- * Updated: participantId points to "Email Address"
- */
-const Q = {
-  timestamp: "Timestamp",
-  name: "Name",
-  participantId: "Email Address",
-  weekStart: "What week are you reporting for? Choose the Sunday that began the week you are reporting for.",
-  // Daily (checkboxes for days)
-  bibleReading: "Bible Reading",
-  morningIntimacy: "Morning Intimacy",
-  scriptureMem: "Scripture Memorization",                 // <-- DAILY now
-  // Weekly (single choice Fully/Partially/Not)
-  fasting: "Fasting",
-  studyMeditation: "Bible Study & Meditation",
-  midnightPrayer: "Midnight Intercessory Prayer",         // <-- WEEKLY now (pick a day, but 1 per week)
-  corporatePrayers: "Corporate Gathering Prayers Commitment",
-  // Comments
-  commentMisses: "Please make a general comment on any of the above commitment that was not completed or partially completed this week. If you completed everything, please type N/A",
-  commentOther: "Any other comments?"
-};
-
-// Fallbacks
-const PID_FALLBACK_KEYS = ["Participant ID (email or phone)", "Email", "Email Address", "Email address"];
-const WEEK_FALLBACK_CONTAINS = "what week are you reporting for";
-
-const DAYS = ["Sunday","Monday","Tuesday","Wednesday","Thursday","Friday","Saturday"];
-const FACT_SHEET = "fact_commitments";
-const RESPONSES_SHEET_PREFIX = "Form Responses";
-
-/********* TRIGGER ENTRY *********/
-function onFormSubmit(e) {
-  const row = fromNamedValues(e.namedValues);
-  writeFactRows(row);
-}
-
-/********* ONE-TIME UTILITIES *********/
-function createTrigger() {
-  ScriptApp.getProjectTriggers().forEach(t => {
-    if (t.getHandlerFunction() === "onFormSubmit") ScriptApp.deleteTrigger(t);
-  });
-  ScriptApp.newTrigger("onFormSubmit")
-    .forSpreadsheet(SpreadsheetApp.getActive())
-    .onFormSubmit()
-    .create();
-}
-
-// Backfill fact_commitments from existing "Form Responses 1"
-function backfillAll() {
-  const ss = SpreadsheetApp.getActive();
-  const resp = ss.getSheets().find(s => s.getName().startsWith(RESPONSES_SHEET_PREFIX));
-  if (!resp) throw new Error("Couldn't find the Form responses sheet.");
-  const data = resp.getDataRange().getValues();
-  const header = data[0];
-  const rows = data.slice(1).filter(r => r.join("").trim() !== "");
-  const namedRows = rows.map(r => {
-    const o = {};
-    header.forEach((h,i)=> o[h] = r[i]);
-    return o;
-  });
-
-  const fact = ss.getSheetByName(FACT_SHEET);
-  if (!fact) throw new Error("Create a sheet named 'fact_commitments' with header row first.");
-  // clear existing (keep header)
-  if (fact.getLastRow() > 1) {
-    fact.getRange(2,1,fact.getLastRow()-1,fact.getLastColumn()).clearContent();
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>Discipleship 90-Day Dashboard</title>
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+<style>
+  :root{
+    --bg:#f7f9fc; --card:#ffffff; --ink:#1f2937; --muted:#6b7280;
+    --ok:#16a34a; --warn:#f59e0b; --bad:#ef4444; --shadow:0 8px 24px rgba(0,0,0,.06);
+    --radius:16px;
+    --read:#3b82f6;     /* Bible Reading */
+    --intimacy:#06b6d4; /* Morning Intimacy */
+    --memory:#7c3aed;   /* Scripture Memorization */
+    --empty:#e5e7eb;
   }
+  *{box-sizing:border-box}
+  body{margin:0;background:var(--bg);color:var(--ink);font-family:ui-sans-serif,system-ui,-apple-system,Segoe UI,Roboto,"Helvetica Neue",Arial}
+  header{padding:20px 24px 8px;display:flex;justify-content:space-between;align-items:center}
+  header h1{margin:0;font-size:clamp(20px,3vw,28px)}
+  header .who{color:var(--muted);font-size:14px}
+  .wrap{padding:0 24px 40px;max-width:1200px;margin:0 auto}
+  .grid{display:grid;gap:18px}
+  .kpis{grid-template-columns:repeat(4,minmax(0,1fr))}
+  .mid{grid-template-columns:2fr 1.4fr}
+  .bottom{grid-template-columns:1.6fr 1.4fr}
+  @media (max-width:980px){.kpis{grid-template-columns:repeat(2,minmax(0,1fr))}.mid,.bottom{grid-template-columns:1fr}}
+  .card{background:var(--card);border-radius:var(--radius);box-shadow:var(--shadow);padding:16px}
+  .card h3{margin:0 0 8px;font-size:16px;color:var(--muted);font-weight:600;letter-spacing:.2px}
+  .big{font-size:clamp(22px,4vw,30px);margin:6px 0 4px;font-weight:800}
+  .sub{font-size:12px;color:var(--muted)}
+  .pill{display:inline-block;padding:4px 10px;border-radius:999px;border:1px solid #e5e7eb;font-size:12px;font-weight:600;margin-top:6px}
+  .ok{background:#e8f8ee;color:#065f46}
+  .warn{background:#fff7e6;color:#92400e}
+  .bad{background:#fdeaea;color:#991b1b}
+  .section h2{font-size:18px;margin:0 0 12px;color:#111827}
+  canvas{width:100%;height:auto;max-height:420px}
 
-  const out = [];
-  namedRows.forEach(src => out.push(...buildRows(src)));
-  if (out.length) fact.getRange(2,1,out.length,out[0].length).setValues(out);
-}
+  /* Heatmap with three mini-bars per day */
+  .heat{display:grid;grid-template-columns:repeat(14,1fr);gap:6px}
+  .day{height:20px;background:#f3f4f6;border-radius:6px;padding:3px;display:grid;grid-template-columns:repeat(3,1fr);gap:3px;border:1px solid #eef2f7}
+  .bar{height:100%;border-radius:4px;background:var(--empty)}
+  .bar.read{background:var(--read)}
+  .bar.intimacy{background:var(--intimacy)}
+  .bar.memory{background:var(--memory)}
+  .legend{display:flex;align-items:center;gap:12px;margin-top:10px;flex-wrap:wrap}
+  .chip{display:flex;align-items:center;gap:6px}
+  .sw{width:20px;height:12px;border-radius:3px}
+  /* Word cloud */
+  .cloudWrap{position:relative; height:340px; background:#f8fafc; border-radius:12px; overflow:hidden; border:1px solid #e5e7eb}
+  .word{position:absolute; font-weight:800; line-height:1; white-space:nowrap; opacity:.92}
+  .w1{font-size:14px} .w2{font-size:18px}
+  .w3{font-size:22px} .w4{font-size:28px}
+  .w5{font-size:36px} .w6{font-size:48px}
+  .palette1{color:#2563eb} .palette2{color:#16a34a}
+  .palette3{color:#f59e0b} .palette4{color:#dc2626}
+  .palette5{color:#0ea5e9} .palette6{color:#9333ea}
+</style>
+</head>
+<body>
+<header>
+  <h1>Discipleship 90-Day Dashboard</h1>
+  <div class="who">Participant: <span id="who">—</span></div>
+</header>
 
-/********* HELPERS *********/
-function fromNamedValues(named) {
-  const out = {};
-  Object.keys(named).forEach(k => out[k] = (named[k] && named[k][0]) || "");
-  return out;
-}
-function parseDateOrNull(s) { const d = new Date(s); return isNaN(d.getTime()) ? null : d; }
-function ymd(d) { return Utilities.formatDate(d, Session.getScriptTimeZone(), "yyyy-MM-dd"); }
-function weeklyToValue(s) {
-  const v = String(s || "").toLowerCase();
-  if (v.startsWith("fully")) return 1;
-  if (v.startsWith("part"))  return 0.5;
-  if (v.startsWith("not"))   return 0;
-  return "";
-}
-function parseDayChecks(multiselect) {
-  const set = new Set(String(multiselect || "").split(",").map(s => s.trim()).filter(Boolean));
-  return DAYS.map(d => set.has(d));
-}
-function pick(obj, keys, containsLower) {
-  for (const k of keys) if (obj[k] != null && String(obj[k]).trim() !== "") return obj[k];
-  if (containsLower) {
-    const found = Object.keys(obj).find(k => k.toLowerCase().includes(containsLower));
-    if (found) return obj[found];
+<div class="wrap">
+  <!-- KPI CARDS -->
+  <div class="grid kpis">
+    <div class="card">
+      <h3>Overall Attainment</h3>
+      <div id="attainment" class="big">—</div>
+      <div id="attnFlag" class="pill">—</div>
+      <div class="sub">Your completed units / all units so far. Target ≥ 95% to succeed after 90 days.</div>
+    </div>
+    <div class="card">
+      <h3>On-Track vs Expected</h3>
+      <div id="ontrack" class="big">—</div>
+      <div id="ontrackHelp" class="sub">Ahead/behind the pace needed to finish at 95%, based on how many units should be done by today.</div>
+    </div>
+    <div class="card">
+      <h3>Days Passed / Left</h3>
+      <div id="days" class="big">—</div>
+      <div id="period" class="sub"></div>
+    </div>
+    <div class="card">
+      <h3>Weakest Area</h3>
+      <div id="weak" class="big">—</div>
+      <div class="sub">Focus here this week</div>
+    </div>
+  </div>
+
+  <!-- MID -->
+  <div class="grid mid section" style="margin-top:18px;">
+    <div class="card"><h2>Weekly Attainment Trend</h2><canvas id="trend"></canvas></div>
+    <div class="card"><h2>Practice Balance (Radar)</h2><canvas id="radar"></canvas><div id="projection" class="sub" style="margin-top:8px"></div></div>
+  </div>
+
+  <!-- BOTTOM -->
+  <div class="grid bottom section" style="margin-top:18px;">
+    <div class="card">
+      <h2>Daily Consistency Heatmap (last 6 weeks)</h2>
+      <div id="heat" class="heat"></div>
+      <div class="legend">
+        <div class="chip"><div class="sw" style="background:var(--read)"></div><span class="sub">Bible Reading</span></div>
+        <div class="chip"><div class="sw" style="background:var(--intimacy)"></div><span class="sub">Morning Intimacy</span></div>
+        <div class="chip"><div class="sw" style="background:var(--memory)"></div><span class="sub">Scripture Memorization</span></div>
+      </div>
+    </div>
+    <div class="card">
+      <h2>Reasons Mentioned (Word Cloud)</h2>
+      <div id="cloud" class="cloudWrap"></div>
+      <div id="cloudHint" class="sub" style="margin-top:8px"></div>
+    </div>
+  </div>
+</div>
+
+<script>
+  /* ======= CONFIG ======= */
+  const FACT_CSV_URL =
+    "https://docs.google.com/spreadsheets/d/e/2PACX-1vQERkbRqvUyktHeUw-DvLVNNIzvR50N0oHC-bpDwx6Lj33-o9uIiGN-ucd9r80Tq3l5_WroECTpI-gz/pub?gid=262595972&single=true&output=csv";
+  const TARGET = 0.95;
+  // Daily set after your swap: Reading, Intimacy, Memorization
+  const DAILY_PRACTICES = new Set(["Bible Reading","Morning Intimacy","Scripture Memorization"]);
+  const DAILY_COLORS = {
+    "Bible Reading":"read",
+    "Morning Intimacy":"intimacy",
+    "Scripture Memorization":"memory"
+  };
+
+  /* ======= HELPERS ======= */
+  const pid = (new URLSearchParams(location.search).get("id") || "").trim().toLowerCase();
+  document.getElementById("who").textContent = pid || "(add ?id=email)";
+
+  function csvToRows(text){
+    const lines = text.trim().split(/\r?\n/);
+    const header = lines.shift().split(",");
+    return lines.map(line=>{
+      const cols = line.split(/,(?=(?:[^"]*"[^"]*")*[^"]*$)/).map(s=>s.replace(/^"|"$/g,""));
+      const o={}; header.forEach((h,i)=>o[h.trim()]= (cols[i]||"").trim());
+      return o;
+    });
   }
-  return "";
-}
-function toPid(src){
-  const pidRaw = src[Q.participantId] || pick(src, PID_FALLBACK_KEYS);
-  return String(pidRaw || "").trim().toLowerCase();
-}
-function toWeekStart(src){
-  const raw = src[Q.weekStart] || pick(src, [], WEEK_FALLBACK_CONTAINS);
-  return parseDateOrNull(raw);
-}
-
-/********* CORE *********/
-function writeFactRows(src) {
-  const ss = SpreadsheetApp.getActiveSpreadsheet();
-  const fact = ss.getSheetByName(FACT_SHEET);
-  if (!fact) throw new Error("Create a sheet named 'fact_commitments' with header row first.");
-
-  const pid = toPid(src);
-  if (!pid) throw new Error("Participant ID (email) not found. Check the Q.participantId label or enable 'Collect email addresses'.");
-
-  const weekStart = toWeekStart(src);
-  if (!weekStart) throw new Error("Week start date missing or invalid.");
-
-  const outRows = buildRows(src, pid, weekStart);
-  if (outRows.length) {
-    fact.getRange(fact.getLastRow() + 1, 1, outRows.length, outRows[0].length).setValues(outRows);
-  }
-}
-
-function buildRows(src, pidParam, weekStartParam) {
-  const pid = pidParam || toPid(src);
-  const weekStart = weekStartParam || toWeekStart(src);
-
-  const general = (src[Q.commentMisses] || "").toString().trim();
-  const other   = (src[Q.commentOther]  || "").toString().trim();
-
-  const out = [];
-
-  // === DAILY (7 rows each) ===
-  [
-    {field: Q.bibleReading,   practice: "Bible Reading"},
-    {field: Q.morningIntimacy,practice: "Morning Intimacy"},
-    {field: Q.scriptureMem,   practice: "Scripture Memorization"} // <— daily now
-  ].forEach(def => {
-    const checks = parseDayChecks(src[def.field]);
-    for (let i=0; i<7; i++) {
-      const d = new Date(weekStart.getTime());
-      d.setDate(d.getDate()+i);
-      out.push([pid, ymd(weekStart), ymd(d), def.practice, "daily", checks[i] ? 1 : 0, general, other]);
+  function ymd(d){ return d.toISOString().slice(0,10); }
+  function sod(d){ const x=new Date(d); x.setHours(0,0,0,0); return x; }
+  function pd(s){ const d=new Date(s); return isNaN(d)?null:d; }
+  function pct(x){ return (Math.round(x*1000)/10).toFixed(1)+"%"; }
+  function fetchCSV(url){ return fetch(url+(url.includes("?")?"&":"?")+"cb="+Date.now()).then(r=>r.text()).then(csvToRows); }
+  function getRowPid(row){
+    const cands = ["participant_id","Email Address","email address","Email","email"];
+    for (const want of cands){
+      const found = Object.keys(row).find(h => h.toLowerCase()===want.toLowerCase());
+      if (found && row[found]) return String(row[found]).trim().toLowerCase();
     }
-  });
+    return "";
+  }
+  function findKeyExactish(row, target){
+    const want = target.replace(/[\s_]+/g,"").toLowerCase();
+    return Object.keys(row).find(k => k.replace(/[\s_]+/g,"").toLowerCase() === want) || null;
+  }
+  function rand(min,max){ return Math.random()*(max-min)+min; }
 
-  // === WEEKLY (1 row each) ===
-  [
-    {field: Q.fasting,           practice: "Fasting"},
-    {field: Q.studyMeditation,   practice: "Bible Study & Meditation"},
-    {field: Q.midnightPrayer,    practice: "Midnight Intercessory Prayer"}, // <— weekly now
-    {field: Q.corporatePrayers,  practice: "Corporate Gathering Prayers Commitment"}
-  ].forEach(def => {
-    const val = weeklyToValue(src[def.field]);
-    if (val !== "") {
-      out.push([pid, ymd(weekStart), ymd(weekStart), def.practice, "weekly", val, general, other]);
+  (async function main(){
+    if(!pid) return;
+
+    const factAll = await fetchCSV(FACT_CSV_URL);
+    const fact = factAll.filter(r => getRowPid(r)===pid);
+
+    if (!fact.length){
+      document.body.insertAdjacentHTML("beforeend","<div class='wrap'><p>No data yet for this participant.</p></div>");
+      return;
     }
-  });
 
-  return out;
-}
+    // comment keys (robust)
+    const sample = fact[0];
+    const KEY_COMMENT_GENERAL = findKeyExactish(sample, "comment_general") || "comment_general";
+    const KEY_COMMENT_OTHER   = findKeyExactish(sample, "comment_other")   || "comment_other";
+
+    // Program timing
+    const weekStarts = fact.map(r=>pd(r.week_start)).filter(Boolean).sort((a,b)=>a-b);
+    const programStart = sod(weekStarts[0]);
+    const today = sod(new Date());
+    const dayNum = Math.max(1, Math.min(90, Math.floor((today - programStart)/(1000*60*60*24))+1));
+    const daysLeft = Math.max(0, 90 - dayNum);
+    const totalWeeksFinal = 13; // ceil(90/7)
+
+    // Aggregations
+    let completed=0, possible=0;
+    const byPractice={}, byWeek={};
+    // For per-day mini-bars
+    const dayMap = {}; // date -> { "Bible Reading":0/1, "Morning Intimacy":0/1, "Scripture Memorization":0/1 }
+    const comments = [];
+
+    fact.forEach(r=>{
+      const val = Number(r.value||0);
+      possible += 1; completed += val;
+
+      const prac = r.practice;
+      byPractice[prac] = byPractice[prac] || {done:0,total:0};
+      byPractice[prac].done += val; byPractice[prac].total += 1;
+
+      const wk = r.week_start;
+      byWeek[wk] = byWeek[wk] || {done:0,total:0};
+      byWeek[wk].done += val; byWeek[wk].total += 1;
+
+      if (DAILY_PRACTICES.has(prac)) {
+        const d = r.date;
+        if (!dayMap[d]) dayMap[d] = {"Bible Reading":0,"Morning Intimacy":0,"Scripture Memorization":0};
+        dayMap[d][prac] = Math.min(1, Number(r.value||0));
+      }
+
+      const cg = (r[KEY_COMMENT_GENERAL]||"").trim();
+      const co = (r[KEY_COMMENT_OTHER]  ||"").trim();
+      if (cg) comments.push(cg);
+      if (co) comments.push(co);
+    });
+
+    // KPIs
+    const attainment = possible ? (completed/possible) : 0;
+    const weeksElapsed = Math.max(1, Math.ceil(dayNum/7));
+    // Expected count to be on pace for 95% *by today*
+    const expectedPossible = (dayNum*3) + (weeksElapsed*4);           // three dailies per day + four weekly per week
+    const expectedCompletedFor95 = expectedPossible * 0.95;
+    const variance = Math.round((completed - expectedCompletedFor95)*10)/10;
+
+    // Projections
+    const totalPossible = (90*3) + (totalWeeksFinal*4);
+    const projectedFinalCompleted = completed + attainment*(totalPossible - possible);
+    const projectedFinalPct = projectedFinalCompleted / totalPossible;
+    const targetFinalCompleted = 0.95 * totalPossible;
+    const shortfall = Math.max(0, targetFinalCompleted - projectedFinalCompleted);
+    const weeksLeft = Math.max(0, totalWeeksFinal - weeksElapsed);
+    const neededPerWeek = weeksLeft ? (shortfall / weeksLeft) : shortfall;
+
+    // Weakest area
+    let weakest=null, weakestPct=1;
+    Object.keys(byPractice).forEach(k=>{
+      const p = byPractice[k]; const ratio = p.total ? p.done/p.total : 0;
+      if (ratio < weakestPct){ weakest=k; weakestPct=ratio; }
+    });
+
+    // KPI cards
+    document.getElementById("attainment").textContent = pct(attainment);
+    const flag = document.getElementById("attnFlag");
+    flag.className = "pill " + (attainment>=0.95 ? "ok" : attainment>=0.8 ? "warn" : "bad");
+    flag.textContent = attainment>=0.95 ? "On track (≥95%)" : "At risk (<95%)";
+
+    document.getElementById("ontrack").textContent = (variance>=0?"+":"")+variance;
+    document.getElementById("ontrackHelp").textContent =
+      `By day ${dayNum}, you’d need ~${Math.round(expectedCompletedFor95)} completed units to be on 95% pace. You’ve completed ${Math.round(completed)} so far, so you’re ${variance>=0?Math.abs(variance)+" ahead":"about "+Math.abs(variance)+" behind"}.`;
+
+    document.getElementById("days").textContent = `Day ${dayNum} / 90 — ${daysLeft} left`;
+    document.getElementById("period").textContent = `Program started ${ymd(programStart)}`;
+    document.getElementById("weak").textContent = weakest ? `${weakest} (${pct(weakestPct)})` : "—";
+
+    // Charts
+    // Weekly line
+    const wLabels = Object.keys(byWeek).sort();
+    const wPct = wLabels.map(w => {
+      const a = byWeek[w]; return a.total ? Math.round(1000*(a.done/a.total))/10 : 0;
+    });
+    new Chart(document.getElementById("trend"), {
+      type:"line",
+      data:{ labels:wLabels, datasets:[{ label:"Weekly Attainment %", data:wPct, borderWidth:3, tension:.25 }] },
+      options:{ responsive:true, scales:{ y:{ suggestedMin:0, suggestedMax:100 } } }
+    });
+
+    // Radar
+    const pLabels = Object.keys(byPractice);
+    const pPct = pLabels.map(k => byPractice[k].done/byPractice[k].total*100);
+    new Chart(document.getElementById("radar"), {
+      type:"radar",
+      data:{ labels:pLabels, datasets:[{ label:"% Attainment by Practice", data:pPct, borderWidth:2, pointRadius:3 }] },
+      options:{ responsive:true, scales:{ r:{ suggestedMin:0, suggestedMax:100 } } }
+    });
+    document.getElementById("projection").textContent =
+      `Projected finish at ${pct(projectedFinalPct)}. ` +
+      (shortfall>0 ? `To hit 95%, aim for ~${Math.ceil(neededPerWeek)} extra unit(s) per week for the remaining ${weeksLeft} week(s).`
+                    : `You're on track for 95%+ 🎉`);
+
+    // Heatmap: render last 42 days using three mini-bars per day
+    const allDates = Object.keys(dayMap).sort().slice(-42);
+    const heat = document.getElementById("heat");
+    allDates.forEach(d=>{
+      const day = document.createElement("div");
+      day.className = "day";
+      const vals = dayMap[d] || {"Bible Reading":0,"Morning Intimacy":0,"Scripture Memorization":0};
+      ["Bible Reading","Morning Intimacy","Scripture Memorization"].forEach(pr=>{
+        const b = document.createElement("div");
+        b.className = "bar " + (vals[pr] ? DAILY_COLORS[pr] : "");
+        day.appendChild(b);
+      });
+      day.title = `${d}\nReading: ${vals["Bible Reading"]? "✓":"–"} • Intimacy: ${vals["Morning Intimacy"]? "✓":"–"} • Memorization: ${vals["Scripture Memorization"]? "✓":"–"}`;
+      heat.appendChild(day);
+    });
+
+    /* ===== Word Cloud from comment_general + comment_other ===== */
+    const STOP = new Set(("the a an and or to of in for with on at is are am be this that it as i we you they he she was were have has had from by not n/a na week weeks day days because due just really very i’m im ive i've").split(" "));
+    const freq = {};
+    let samples = 0;
+    fact.forEach(r=>{
+      const cg = (r[KEY_COMMENT_GENERAL]||"").toLowerCase().trim();
+      const co = (r[KEY_COMMENT_OTHER]  ||"").toLowerCase().trim();
+      const text = (cg + " " + co).trim();
+      if (!text || /^n\/?a$/.test(text)) return;
+      samples++;
+      text.replace(/[^a-z0-9\s]/g," ").split(/\s+/).forEach(w=>{
+        if(!w || STOP.has(w)) return;
+        freq[w] = (freq[w]||0)+1;
+      });
+    });
+
+    const cloud = document.getElementById("cloud");
+    cloud.innerHTML = "";
+    if (!samples){
+      document.getElementById("cloudHint").textContent = "No comments yet";
+      return;
+    }
+    document.getElementById("cloudHint").textContent = `${samples} comment(s)`;
+
+    const entries = Object.entries(freq).sort((a,b)=>b[1]-a[1]).slice(0,40);
+    const max = entries[0]?.[1] || 1;
+    const palettes = ["palette1","palette2","palette3","palette4","palette5","palette6"];
+    const W = cloud.clientWidth, H = cloud.clientHeight;
+
+    entries.forEach(([w,c],i)=>{
+      const weight = c/max;
+      const bucket = weight>.9?6: weight>.75?5: weight>.6?4: weight>.45?3: weight>.3?2:1;
+      const span = document.createElement("div");
+      span.className = `word w${bucket} ${palettes[i%palettes.length]}`;
+      span.textContent = w;
+      const rot = bucket>=6 ? 0 : (Math.random()<0.5? -1:1) * Math.floor(Math.random()*10+5);
+      span.style.transform = `rotate(${rot}deg)`;
+      const pad = 20;
+      const left = Math.max(4, Math.min(W-160, Math.random()*(W-pad*2)+pad));
+      const top  = Math.max(4, Math.min(H-60, Math.random()*(H-pad*2)+pad));
+      span.style.left = left+"px";
+      span.style.top = top+"px";
+      cloud.appendChild(span);
+    });
+  })();
+</script>
+</body>
+</html>

@@ -57,6 +57,23 @@
   .chip{display:flex;align-items:center;gap:6px}
   .sw{width:20px;height:12px;border-radius:3px}
 
+  /* === Details table under heatmap === */
+  .details{margin-top:14px}
+  .tbl{width:100%;border-collapse:separate;border-spacing:0 6px;table-layout:fixed}
+  .tbl th,.tbl td{font-size:12px;padding:8px 10px}
+  .tbl th{color:#111827;text-align:left}
+  .tbl tr{background:#f8fafc}
+  .tbl td:first-child{border-radius:8px 0 0 8px}
+  .tbl td:last-child{border-radius:0 8px 8px 0}
+  .badge{display:inline-block;min-width:20px;text-align:center;padding:2px 6px;border-radius:6px;font-weight:700}
+  .b-ok{background:#e8f8ee;color:#065f46}
+  .b-no{background:#f3f4f6;color:#6b7280}
+  .col-r .badge{background:rgba(59,130,246,.12);color:#1e3a8a}
+  .col-i .badge{background:rgba(6,182,212,.12);color:#0f766e}
+  .col-m .badge{background:rgba(124,58,237,.12);color:#5b21b6}
+  .scroll{max-height:240px;overflow:auto;border:1px solid #eef2f7;border-radius:10px;background:#fff}
+  .tbl thead th{position:sticky;top:0;background:#fff;z-index:1;border-bottom:1px solid #eef2f7}
+
   /* Word cloud */
   .cloudWrap{position:relative; height:340px; background:#f8fafc; border-radius:12px; overflow:hidden; border:1px solid #e5e7eb}
   .word{position:absolute; font-weight:800; line-height:1; white-space:nowrap; opacity:.92}
@@ -128,7 +145,26 @@
         <div class="chip"><div class="sw" style="background:var(--intimacy)"></div><span class="sub">Morning Intimacy</span></div>
         <div class="chip"><div class="sw" style="background:var(--memory)"></div><span class="sub">Scripture Memorization</span></div>
       </div>
+
+      <!-- Visible per-day details (no hover needed) -->
+      <div class="details">
+        <div class="sub" style="margin:8px 0 6px">Daily details (last 42 days)</div>
+        <div class="scroll">
+          <table class="tbl" id="heatTable">
+            <thead>
+              <tr>
+                <th style="width:140px">Date</th>
+                <th class="col-r">Reading</th>
+                <th class="col-i">Intimacy</th>
+                <th class="col-m">Memorization</th>
+              </tr>
+            </thead>
+            <tbody></tbody>
+          </table>
+        </div>
+      </div>
     </div>
+
     <div class="card">
       <h2>Reasons Mentioned (Word Cloud)</h2>
       <div id="cloud" class="cloudWrap"></div>
@@ -206,7 +242,6 @@
     // Aggregations
     let completed=0, possible=0;
     const byPractice={}, byWeek={};
-    // Per-day 0/1 for each daily practice
     const dayMap = {}; // date -> { Reading, Intimacy, Memory }
     const comments = [];
 
@@ -298,10 +333,8 @@
                     : `You're on track for 95%+ 🎉`);
 
     // === Heatmap rendering: 6 rows × 7 columns ===
-    // Take the last 42 dates, oldest → newest, then break into chunks of 7 (weeks)
     const datesSorted = Object.keys(dayMap).sort();
     const last42 = datesSorted.slice(-42);
-    // If fewer than 42 days exist, left-pad with empty placeholders to fill full weeks
     while (last42.length < 42) last42.unshift(null);
 
     // Weekday header
@@ -321,16 +354,34 @@
           if (d && dayMap[d] && Number(dayMap[d][k])>=1) seg.classList.add("on");
           cell.appendChild(seg);
         });
-        if (d){
-          const vals = dayMap[d] || {"Bible Reading":0,"Morning Intimacy":0,"Scripture Memorization":0};
-          cell.title = `${d}\nReading: ${vals["Bible Reading"]? "✓":"–"} • Intimacy: ${vals["Morning Intimacy"]? "✓":"–"} • Memorization: ${vals["Scripture Memorization"]? "✓":"–"}`;
-        } else {
-          cell.style.opacity = .35; // padded empty cells
-        }
+        if (!d) cell.style.opacity = .35;
         row.appendChild(cell);
       }
       heat.appendChild(row);
     }
+
+    /* ===== Details table (visible text, last 42 days) ===== */
+    const tbody = document.querySelector("#heatTable tbody");
+    const orderForTable = last42.slice().reverse(); // newest first
+    orderForTable.forEach(d=>{
+      const tr = document.createElement("tr");
+      const tdDate = document.createElement("td");
+      tdDate.textContent = d || "—";
+      tr.appendChild(tdDate);
+
+      DAILY_KEYS.forEach((k,idx)=>{
+        const td = document.createElement("td");
+        td.className = idx===0?"col-r":idx===1?"col-i":"col-m";
+        const done = d && dayMap[d] ? Number(dayMap[d][k])>=1 : false;
+        const b = document.createElement("span");
+        b.className = "badge " + (done ? "b-ok" : "b-no");
+        b.textContent = done ? "✓" : "—";
+        td.appendChild(b);
+        tr.appendChild(td);
+      });
+
+      tbody.appendChild(tr);
+    });
 
     /* ===== Word Cloud from comment_general + comment_other ===== */
     const STOP = new Set(("the a an and or to of in for with on at is are am be this that it as i we you they he she was were have has had from by not n/a na week weeks day days because due just really very i’m im ive i've").split(" "));

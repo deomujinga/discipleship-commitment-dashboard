@@ -22,6 +22,7 @@
   header .who{color:var(--muted);font-size:14px}
   .wrap{padding:0 24px 40px;max-width:1200px;margin:0 auto}
 
+  /* KPI grid auto-fit so we can add Strongest Area */
   .kpis{display:grid;gap:18px;grid-template-columns:repeat(auto-fit,minmax(220px,1fr))}
   .grid{display:grid;gap:18px}
   .mid{grid-template-columns:2fr 1.4fr}
@@ -39,23 +40,15 @@
   .section h2{font-size:18px;margin:0 0 12px;color:#111827}
   canvas{width:100%;height:auto;max-height:420px}
 
-  /* === Heatmap (compact style) === */
-  .heatWrap{display:flex;flex-direction:column;gap:8px}
-  .wkHeader{display:grid;grid-template-columns:repeat(7,1fr);gap:4px}
-  .wkHeader span{font-size:11px;color:var(--muted);text-align:center;font-weight:600}
-  .heat{display:grid;grid-template-rows:repeat(6,1fr);gap:4px}
-  .row{display:grid;grid-template-columns:repeat(7,1fr);gap:4px}
-  .cell{
-    width:22px;height:22px;
-    background:#f3f4f6;border-radius:5px;padding:2px;
-    display:grid;grid-template-rows:repeat(3,1fr);gap:1px;
-    border:1px solid #e5e7eb;
-  }
-  .seg{border-radius:2px;background:var(--empty)}
-  .seg.read.on{background:var(--read)}
-  .seg.intimacy.on{background:var(--intimacy)}
-  .seg.memory.on{background:var(--memory)}
-
+  /* Heatmap with three mini-bars per day with visible labels */
+  .heat{display:grid;grid-template-columns:repeat(14,1fr);gap:6px}
+  .day{height:20px;background:#f3f4f6;border-radius:6px;padding:3px;display:grid;grid-template-columns:repeat(3,1fr);gap:3px;border:1px solid #eef2f7}
+  .bar{position:relative;height:100%;border-radius:4px;background:var(--empty);display:flex;align-items:center;justify-content:center}
+  .bar .lbl{font-size:10px;font-weight:800;color:#9ca3af;line-height:1}
+  .bar.on .lbl{color:#ffffff}
+  .bar.read.on{background:var(--read)}
+  .bar.intimacy.on{background:var(--intimacy)}
+  .bar.memory.on{background:var(--memory)}
   .legend{display:flex;align-items:center;gap:12px;margin-top:10px;flex-wrap:wrap}
   .chip{display:flex;align-items:center;gap:6px}
   .sw{width:20px;height:12px;border-radius:3px}
@@ -80,11 +73,36 @@
 <div class="wrap">
   <!-- KPI CARDS -->
   <div class="kpis">
-    <div class="card"><h3>Overall Attainment</h3><div id="attainment" class="big">—</div><div id="attnFlag" class="pill">—</div><div class="sub">Completed ÷ possible so far (target ≥95%).</div></div>
-    <div class="card"><h3>On-Track vs Expected</h3><div id="ontrack" class="big">—</div><div id="ontrackHelp" class="sub"></div></div>
-    <div class="card"><h3>Days Passed / Left</h3><div id="days" class="big">—</div><div id="period" class="sub"></div></div>
-    <div class="card"><h3>Weakest Area</h3><div id="weak" class="big">—</div><div class="sub">Lowest per-practice attainment</div></div>
-    <div class="card"><h3>Strongest Area</h3><div id="strong" class="big">—</div><div class="sub">Highest per-practice attainment</div></div>
+    <div class="card">
+      <h3>Overall Attainment</h3>
+      <div id="attainment" class="big">—</div>
+      <div id="attnFlag" class="pill">—</div>
+      <div class="sub">Completed so far ÷ possible so far. Target ≥ 95% to succeed by Day 90.</div>
+    </div>
+
+    <div class="card">
+      <h3>On-Track vs Expected</h3>
+      <div id="ontrack" class="big">—</div>
+      <div id="ontrackHelp" class="sub">Ahead/behind the 95% pace based on how many units should be done by today.</div>
+    </div>
+
+    <div class="card">
+      <h3>Days Passed / Left</h3>
+      <div id="days" class="big">—</div>
+      <div id="period" class="sub"></div>
+    </div>
+
+    <div class="card">
+      <h3>Weakest Area</h3>
+      <div id="weak" class="big">—</div>
+      <div class="sub">Per-practice attainment (completed ÷ possible) so far.</div>
+    </div>
+
+    <div class="card">
+      <h3>Strongest Area</h3>
+      <div id="strong" class="big">—</div>
+      <div class="sub">Per-practice attainment (completed ÷ possible) so far.</div>
+    </div>
   </div>
 
   <!-- MID -->
@@ -97,17 +115,13 @@
   <div class="grid bottom section" style="margin-top:18px;">
     <div class="card">
       <h2>Daily Consistency Heatmap (last 6 weeks)</h2>
-      <div class="heatWrap">
-        <div class="wkHeader" id="wkHeader"></div>
-        <div class="heat" id="heat"></div>
-      </div>
+      <div id="heat" class="heat"></div>
       <div class="legend">
         <div class="chip"><div class="sw" style="background:var(--read)"></div><span class="sub">Bible Reading</span></div>
         <div class="chip"><div class="sw" style="background:var(--intimacy)"></div><span class="sub">Morning Intimacy</span></div>
         <div class="chip"><div class="sw" style="background:var(--memory)"></div><span class="sub">Scripture Memorization</span></div>
       </div>
     </div>
-
     <div class="card">
       <h2>Reasons Mentioned (Word Cloud)</h2>
       <div id="cloud" class="cloudWrap"></div>
@@ -117,103 +131,238 @@
 </div>
 
 <script>
-  const FACT_CSV_URL="https://docs.google.com/spreadsheets/d/e/2PACX-1vQERkbRqvUyktHeUw-DvLVNNIzvR50N0oHC-bpDwx6Lj33-o9uIiGN-ucd9r80Tq3l5_WroECTpI-gz/pub?gid=262595972&single=true&output=csv";
-  const TARGET=0.95;
-  const DAILY_KEYS=["Bible Reading","Morning Intimacy","Scripture Memorization"];
-  const WEEKDAYS=["S","M","T","W","T","F","S"];
+  /* ======= CONFIG ======= */
+  const FACT_CSV_URL =
+    "https://docs.google.com/spreadsheets/d/e/2PACX-1vQERkbRqvUyktHeUw-DvLVNNIzvR50N0oHC-bpDwx6Lj33-o9uIiGN-ucd9r80Tq3l5_WroECTpI-gz/pub?gid=262595972&single=true&output=csv";
+  const TARGET = 0.95;
+  // Daily set per your spec: Reading, Intimacy, Memorization
+  const DAILY_PRACTICES = new Set(["Bible Reading","Morning Intimacy","Scripture Memorization"]);
+  const DAILY_COLORS = {
+    "Bible Reading":"read",
+    "Morning Intimacy":"intimacy",
+    "Scripture Memorization":"memory"
+  };
+  const LETTER = {"Bible Reading":"R","Morning Intimacy":"I","Scripture Memorization":"M"};
+
+  /* ======= HELPERS ======= */
+  const pid = (new URLSearchParams(location.search).get("id") || "").trim().toLowerCase();
+  document.getElementById("who").textContent = pid || "(add ?id=email)";
 
   function csvToRows(text){
-    const lines=text.trim().split(/\r?\n/);
-    const header=lines.shift().split(",");
+    const lines = text.trim().split(/\r?\n/);
+    const header = lines.shift().split(",");
     return lines.map(line=>{
-      const cols=line.split(/,(?=(?:[^"]*"[^"]*")*[^"]*$)/).map(s=>s.replace(/^"|"$/g,""));
-      const o={}; header.forEach((h,i)=>o[h.trim()]=(cols[i]||"").trim()); return o;
+      const cols = line.split(/,(?=(?:[^"]*"[^"]*")*[^"]*$)/).map(s=>s.replace(/^"|"$/g,""));
+      const o={}; header.forEach((h,i)=>o[h.trim()]= (cols[i]||"").trim());
+      return o;
     });
   }
-  function pct(x){return (Math.round(x*1000)/10).toFixed(1)+"%";}
-  function pd(s){const d=new Date(s);return isNaN(d)?null:d;}
-  function sod(d){const x=new Date(d);x.setHours(0,0,0,0);return x;}
-  function ymd(d){return d.toISOString().slice(0,10);}
-  function getRowPid(r){const c=["participant_id","email address","Email Address","Email"];for(const k of c){if(r[k])return r[k].toLowerCase()}return"";}
-  function fetchCSV(url){return fetch(url).then(r=>r.text()).then(csvToRows);}
+  function ymd(d){ return d.toISOString().slice(0,10); }
+  function sod(d){ const x=new Date(d); x.setHours(0,0,0,0); return x; }
+  function pd(s){ const d=new Date(s); return isNaN(d)?null:d; }
+  function pct(x){ return (Math.round(x*1000)/10).toFixed(1)+"%"; }
+  function fetchCSV(url){ return fetch(url+(url.includes("?")?"&":"?")+"cb="+Date.now()).then(r=>r.text()).then(csvToRows); }
+  function getRowPid(row){
+    const cands = ["participant_id","Email Address","email address","Email","email"];
+    for (const want of cands){
+      const found = Object.keys(row).find(h => h.toLowerCase()===want.toLowerCase());
+      if (found && row[found]) return String(row[found]).trim().toLowerCase();
+    }
+    return "";
+  }
+  function findKeyExactish(row, target){
+    const want = target.replace(/[\s_]+/g,"").toLowerCase();
+    return Object.keys(row).find(k => k.replace(/[\s_]+/g,"").toLowerCase() === want) || null;
+  }
+  function rand(min,max){ return Math.random()*(max-min)+min; }
 
   (async function main(){
-    const pid=(new URLSearchParams(location.search).get("id")||"").toLowerCase();
-    document.getElementById("who").textContent=pid||"(add ?id=email)";
-    if(!pid)return;
+    if(!pid) return;
 
-    const factAll=await fetchCSV(FACT_CSV_URL);
-    const fact=factAll.filter(r=>getRowPid(r)===pid);
-    if(!fact.length){document.body.insertAdjacentHTML("beforeend","<div class='wrap'><p>No data for this participant.</p></div>");return;}
+    const factAll = await fetchCSV(FACT_CSV_URL);
+    const fact = factAll.filter(r => getRowPid(r)===pid);
 
-    const weekStarts=fact.map(r=>pd(r.week_start)).filter(Boolean).sort((a,b)=>a-b);
-    const programStart=sod(weekStarts[0]); const today=sod(new Date());
-    const dayNum=Math.max(1,Math.min(90,Math.floor((today-programStart)/(1000*60*60*24))+1));
-    const daysLeft=Math.max(0,90-dayNum);
+    if (!fact.length){
+      document.body.insertAdjacentHTML("beforeend","<div class='wrap'><p>No data yet for this participant.</p></div>");
+      return;
+    }
 
-    let completed=0,possible=0; const byPractice={},byWeek={},dayMap={};
+    // comment keys (robust)
+    const sample = fact[0];
+    const KEY_COMMENT_GENERAL = findKeyExactish(sample, "comment_general") || "comment_general";
+    const KEY_COMMENT_OTHER   = findKeyExactish(sample, "comment_other")   || "comment_other";
+
+    // Program timing
+    const weekStarts = fact.map(r=>pd(r.week_start)).filter(Boolean).sort((a,b)=>a-b);
+    const programStart = sod(weekStarts[0]);
+    const today = sod(new Date());
+    const dayNum = Math.max(1, Math.min(90, Math.floor((today - programStart)/(1000*60*60*24))+1));
+    const daysLeft = Math.max(0, 90 - dayNum);
+    const totalWeeksFinal = 13; // ceil(90/7)
+
+    // Aggregations
+    let completed=0, possible=0;
+    const byPractice={}, byWeek={};
+    const dayMap = {}; // date -> { three dailies }
+    const comments = [];
+
     fact.forEach(r=>{
-      const v=+r.value||0; completed+=v; possible++;
-      const p=r.practice; byPractice[p]=byPractice[p]||{done:0,total:0}; byPractice[p].done+=v; byPractice[p].total++;
-      const wk=r.week_start; byWeek[wk]=byWeek[wk]||{done:0,total:0}; byWeek[wk].done+=v; byWeek[wk].total++;
-      if(DAILY_KEYS.includes(p)){const d=r.date;if(!dayMap[d])dayMap[d]={"Bible Reading":0,"Morning Intimacy":0,"Scripture Memorization":0}; dayMap[d][p]=Math.min(1,v);}
+      const val = Number(r.value||0);
+      possible += 1; completed += val;
+
+      const prac = r.practice;
+      byPractice[prac] = byPractice[prac] || {done:0,total:0};
+      byPractice[prac].done += val; byPractice[prac].total += 1;
+
+      const wk = r.week_start;
+      byWeek[wk] = byWeek[wk] || {done:0,total:0};
+      byWeek[wk].done += val; byWeek[wk].total += 1;
+
+      if (DAILY_PRACTICES.has(prac)) {
+        const d = r.date;
+        if (!dayMap[d]) dayMap[d] = {"Bible Reading":0,"Morning Intimacy":0,"Scripture Memorization":0};
+        dayMap[d][prac] = Math.min(1, Number(r.value||0));
+      }
+
+      const cg = (r[KEY_COMMENT_GENERAL]||"").trim();
+      const co = (r[KEY_COMMENT_OTHER]  ||"").trim();
+      if (cg) comments.push(cg);
+      if (co) comments.push(co);
     });
 
-    const attainment=possible?(completed/possible):0;
-    const weeksElapsed=Math.max(1,Math.ceil(dayNum/7));
-    const expectedPossible=(dayNum*3)+(weeksElapsed*4);
-    const expectedCompletedFor95=expectedPossible*0.95;
-    const variance=Math.round((completed-expectedCompletedFor95)*10)/10;
-    let weak=null,weakPct=1,strong=null,strongPct=-1;
-    Object.keys(byPractice).forEach(k=>{const p=byPractice[k];const ratio=p.done/p.total;if(ratio<weakPct){weak=k;weakPct=ratio}if(ratio>strongPct){strong=k;strongPct=ratio}});
-    document.getElementById("attainment").textContent=pct(attainment);
-    const flag=document.getElementById("attnFlag");flag.className="pill "+(attainment>=0.95?"ok":attainment>=0.8?"warn":"bad");flag.textContent=attainment>=0.95?"On track":"At risk";
-    document.getElementById("ontrack").textContent=(variance>=0?"+":"")+variance;
-    document.getElementById("ontrackHelp").textContent=`By day ${dayNum}, ~${Math.round(expectedCompletedFor95)} completions = 95% pace. You’ve done ${Math.round(completed)}.`;
-    document.getElementById("days").textContent=`Day ${dayNum}/90 — ${daysLeft} left`;
-    document.getElementById("period").textContent=`Program started ${ymd(programStart)}`;
-    document.getElementById("weak").textContent=weak?`${weak} (${pct(weakPct)})`:"—";
-    document.getElementById("strong").textContent=strong?`${strong} (${pct(strongPct)})`:"—";
+    // KPIs
+    const attainment = possible ? (completed/possible) : 0;
+    const weeksElapsed = Math.max(1, Math.ceil(dayNum/7));
+    // Expected count to be on pace for 95% *by today*
+    const expectedPossible = (dayNum*3) + (weeksElapsed*4);  // 3 daily + 4 weekly categories
+    const expectedCompletedFor95 = expectedPossible * 0.95;
+    const variance = Math.round((completed - expectedCompletedFor95)*10)/10;
 
-    const wLabels=Object.keys(byWeek).sort();
-    const wPct=wLabels.map(w=>byWeek[w].done/byWeek[w].total*100);
-    new Chart(document.getElementById("trend"),{type:"line",data:{labels:wLabels,datasets:[{label:"Weekly %",data:wPct,borderWidth:3,tension:.25}]},options:{scales:{y:{suggestedMin:0,suggestedMax:100}}}});
-    const pLabels=Object.keys(byPractice);
-    const pPct=pLabels.map(k=>byPractice[k].done/byPractice[k].total*100);
-    new Chart(document.getElementById("radar"),{type:"radar",data:{labels:pLabels,datasets:[{label:"% Attainment",data:pPct}]},options:{scales:{r:{suggestedMin:0,suggestedMax:100}}}});
+    // Projections
+    const totalPossible = (90*3) + (totalWeeksFinal*4);
+    const projectedFinalCompleted = completed + attainment*(totalPossible - possible);
+    const projectedFinalPct = projectedFinalCompleted / totalPossible;
+    const targetFinalCompleted = 0.95 * totalPossible;
+    const shortfall = Math.max(0, targetFinalCompleted - projectedFinalCompleted);
+    const weeksLeft = Math.max(0, totalWeeksFinal - weeksElapsed);
+    const neededPerWeek = weeksLeft ? (shortfall / weeksLeft) : shortfall;
 
-    const hdr=document.getElementById("wkHeader");WEEKDAYS.forEach(ch=>{const s=document.createElement("span");s.textContent=ch;hdr.appendChild(s)});
-    const heat=document.getElementById("heat");
-    const datesSorted=Object.keys(dayMap).sort();const last42=datesSorted.slice(-42);while(last42.length<42)last42.unshift(null);
+    // Weakest & Strongest areas (per-practice attainment)
+    let weakest=null, weakestPct=1, strongest=null, strongestPct=-1;
+    Object.keys(byPractice).forEach(k=>{
+      const p = byPractice[k]; const ratio = p.total ? p.done/p.total : 0;
+      if (ratio < weakestPct){ weakest=k; weakestPct=ratio; }
+      if (ratio > strongestPct){ strongest=k; strongestPct=ratio; }
+    });
 
-    // === Heatmap with hover tooltips ===
-    for(let r=0;r<6;r++){
-      const row=document.createElement("div");row.className="row";
-      for(let c=0;c<7;c++){
-        const idx=r*7+c;const d=last42[idx];
-        const cell=document.createElement("div");cell.className="cell";
+    // KPI cards fill
+    document.getElementById("attainment").textContent = pct(attainment);
+    const flag = document.getElementById("attnFlag");
+    flag.className = "pill " + (attainment>=0.95 ? "ok" : attainment>=0.8 ? "warn" : "bad");
+    flag.textContent = attainment>=0.95 ? "On track (≥95%)" : "At risk (<95%)";
 
-        const doneR=d&&dayMap[d]?Number(dayMap[d]["Bible Reading"])>=1:false;
-        const doneI=d&&dayMap[d]?Number(dayMap[d]["Morning Intimacy"])>=1:false;
-        const doneM=d&&dayMap[d]?Number(dayMap[d]["Scripture Memorization"])>=1:false;
+    document.getElementById("ontrack").textContent = (variance>=0?"+":"")+variance;
+    document.getElementById("ontrackHelp").textContent =
+      `By day ${dayNum}, ~${Math.round(expectedCompletedFor95)} completed units is 95% pace. You’ve completed ${Math.round(completed)}, so you’re ${variance>=0?Math.abs(variance)+" ahead":Math.abs(variance)+" behind"}.`;
 
-        ["Bible Reading","Morning Intimacy","Scripture Memorization"].forEach(k=>{
-          const seg=document.createElement("div");
-          seg.className="seg "+(k==="Bible Reading"?"read":k==="Morning Intimacy"?"intimacy":"memory");
-          if(d&&dayMap[d]&&Number(dayMap[d][k])>=1)seg.classList.add("on");
-          cell.appendChild(seg);
-        });
+    document.getElementById("days").textContent = `Day ${dayNum} / 90 — ${daysLeft} left`;
+    document.getElementById("period").textContent = `Program started ${ymd(programStart)}`;
+    document.getElementById("weak").textContent = weakest ? `${weakest} (${pct(weakestPct)})` : "—";
+    document.getElementById("strong").textContent = strongest ? `${strongest} (${pct(strongestPct)})` : "—";
 
-        if(d){
-          cell.title=`${d}\nReading: ${doneR?"✓":"—"} • Intimacy: ${doneI?"✓":"—"} • Memorization: ${doneM?"✓":"—"}`;
-        } else {
-          cell.style.opacity=0.35;
-          cell.title="No data";
-        }
-        row.appendChild(cell);
-      }
-      heat.appendChild(row);
+    // Weekly line
+    const wLabels = Object.keys(byWeek).sort();
+    const wPct = wLabels.map(w => {
+      const a = byWeek[w]; return a.total ? Math.round(1000*(a.done/a.total))/10 : 0;
+    });
+    new Chart(document.getElementById("trend"), {
+      type:"line",
+      data:{ labels:wLabels, datasets:[{ label:"Weekly Attainment %", data:wPct, borderWidth:3, tension:.25 }] },
+      options:{ responsive:true, scales:{ y:{ suggestedMin:0, suggestedMax:100 } } }
+    });
+
+    // Radar
+    const pLabels = Object.keys(byPractice);
+    const pPct = pLabels.map(k => byPractice[k].done/byPractice[k].total*100);
+    new Chart(document.getElementById("radar"), {
+      type:"radar",
+      data:{ labels:pLabels, datasets:[{ label:"% Attainment by Practice", data:pPct, borderWidth:2, pointRadius:3 }] },
+      options:{ responsive:true, scales:{ r:{ suggestedMin:0, suggestedMax:100 } } }
+    });
+    document.getElementById("projection").textContent =
+      `Projected finish at ${pct(projectedFinalPct)}. ` +
+      (shortfall>0 ? `To hit 95%, aim for ~${Math.ceil(neededPerWeek)} extra unit(s) per week for the remaining ${weeksLeft} week(s).`
+                    : `You're on track for 95%+ 🎉`);
+
+    // Heatmap: last 42 days, three mini-bars per day WITH LETTERS
+    const allDates = Object.keys(dayMap).sort().slice(-42);
+    const heat = document.getElementById("heat");
+    allDates.forEach(d=>{
+      const day = document.createElement("div");
+      day.className = "day";
+      const vals = dayMap[d] || {"Bible Reading":0,"Morning Intimacy":0,"Scripture Memorization":0};
+
+      ["Bible Reading","Morning Intimacy","Scripture Memorization"].forEach(pr=>{
+        const done = Number(vals[pr]) >= 1;
+        const b = document.createElement("div");
+        b.className = "bar " + (done ? DAILY_COLORS[pr] + " on" : "");
+        if (!done) b.className += " " + DAILY_COLORS[pr]; // keep color outline when off
+        b.classList.add(DAILY_COLORS[pr]);
+        const lbl = document.createElement("span");
+        lbl.className = "lbl";
+        lbl.textContent = LETTER[pr];
+        b.appendChild(lbl);
+        day.appendChild(b);
+      });
+
+      day.title = `${d}\nReading: ${vals["Bible Reading"]? "✓":"–"} • Intimacy: ${vals["Morning Intimacy"]? "✓":"–"} • Memorization: ${vals["Scripture Memorization"]? "✓":"–"}`;
+      heat.appendChild(day);
+    });
+
+    /* ===== Word Cloud from comment_general + comment_other ===== */
+    const STOP = new Set(("the a an and or to of in for with on at is are am be this that it as i we you they he she was were have has had from by not n/a na week weeks day days because due just really very i’m im ive i've").split(" "));
+    const freq = {};
+    let samples = 0;
+    fact.forEach(r=>{
+      const cg = (r[findKeyExactish(r,"comment_general")||"comment_general"]||"").toLowerCase().trim();
+      const co = (r[findKeyExactish(r,"comment_other")  ||"comment_other"]  ||"").toLowerCase().trim();
+      const text = (cg + " " + co).trim();
+      if (!text || /^n\/?a$/.test(text)) return;
+      samples++;
+      text.replace(/[^a-z0-9\s]/g," ").split(/\s+/).forEach(w=>{
+        if(!w || STOP.has(w)) return;
+        freq[w] = (freq[w]||0)+1;
+      });
+    });
+
+    const cloud = document.getElementById("cloud");
+    cloud.innerHTML = "";
+    if (!samples){
+      document.getElementById("cloudHint").textContent = "No comments yet";
+      return;
     }
+    document.getElementById("cloudHint").textContent = `${samples} comment(s)`;
+
+    const entries = Object.entries(freq).sort((a,b)=>b[1]-a[1]).slice(0,40);
+    const max = entries[0]?.[1] || 1;
+    const palettes = ["palette1","palette2","palette3","palette4","palette5","palette6"];
+    const W = cloud.clientWidth, H = cloud.clientHeight;
+
+    entries.forEach(([w,c],i)=>{
+      const weight = c/max;
+      const bucket = weight>.9?6: weight>.75?5: weight>.6?4: weight>.45?3: weight>.3?2:1;
+      const span = document.createElement("div");
+      span.className = `word w${bucket} ${palettes[i%palettes.length]}`;
+      span.textContent = w;
+      const rot = bucket>=6 ? 0 : (Math.random()<0.5? -1:1) * Math.floor(Math.random()*10+5);
+      span.style.transform = `rotate(${rot}deg)`;
+      const pad = 20;
+      const left = Math.max(4, Math.min(W-160, Math.random()*(W-pad*2)+pad));
+      const top  = Math.max(4, Math.min(H-60, Math.random()*(H-pad*2)+pad));
+      span.style.left = left+"px";
+      span.style.top = top+"px";
+      cloud.appendChild(span);
+    });
   })();
 </script>
 </body>

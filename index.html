@@ -467,8 +467,8 @@
     document.getElementById("ontrackHelp").textContent =
       `By day ${dayNum}, ~${Math.round(expectedCompletedFor95)} completed units is 95% pace. You've completed ${Math.round(completed)}, so you're ${variance>=0?Math.abs(variance)+" ahead":Math.abs(variance)+" behind"}.`;
 
-    document.getElementById("days").textContent = `Day ${dayNum} / 90 — ${daysLeft} left`;
-    document.getElementById("period").textContent = `Program started ${ymd(programStart)}`;
+    document.getElementById("days").textContent = `Day ${dayNum} / 90`;
+    document.getElementById("period").textContent = `${daysLeft} days remaining`;
     document.getElementById("weak").textContent = weakest ? `${weakest} (${pct(weakestPct)})` : "—";
     document.getElementById("strong").textContent = strongest ? `${strongest} (${pct(strongestPct)})` : "—";
 

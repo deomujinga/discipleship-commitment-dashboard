@@ -29,8 +29,9 @@
   .bottom{grid-template-columns:1.6fr 1.4fr}
   @media (max-width:980px){.mid,.bottom{grid-template-columns:1fr}}
 
-  .card{background:var(--card);border-radius:var(--radius);box-shadow:var(--shadow);padding:16px}
+  .card{background:var(--card);border-radius:var(--radius);box-shadow:var(--shadow);padding:20px}
   .card h3{margin:0 0 8px;font-size:16px;color:var(--muted);font-weight:600;letter-spacing:.2px}
+  .card h2{font-size:18px;margin:0 0 16px;color:#111827;font-weight:700}
   .big{font-size:clamp(22px,4vw,30px);margin:6px 0 4px;font-weight:800}
   .sub{font-size:12px;color:var(--muted)}
   .pill{display:inline-block;padding:4px 10px;border-radius:999px;border:1px solid #e5e7eb;font-size:12px;font-weight:600;margin-top:6px}
@@ -40,18 +41,132 @@
   .section h2{font-size:18px;margin:0 0 12px;color:#111827}
   canvas{width:100%;height:auto;max-height:420px}
 
-  /* Heatmap with three mini-bars per day with visible labels */
-  .heat{display:grid;grid-template-columns:repeat(14,1fr);gap:6px}
-  .day{height:20px;background:#f3f4f6;border-radius:6px;padding:3px;display:grid;grid-template-columns:repeat(3,1fr);gap:3px;border:1px solid #eef2f7}
-  .bar{position:relative;height:100%;border-radius:4px;background:var(--empty);display:flex;align-items:center;justify-content:center}
-  .bar .lbl{font-size:10px;font-weight:800;color:#9ca3af;line-height:1}
-  .bar.on .lbl{color:#ffffff}
-  .bar.read.on{background:var(--read)}
-  .bar.intimacy.on{background:var(--intimacy)}
-  .bar.memory.on{background:var(--memory)}
-  .legend{display:flex;align-items:center;gap:12px;margin-top:10px;flex-wrap:wrap}
-  .chip{display:flex;align-items:center;gap:6px}
-  .sw{width:20px;height:12px;border-radius:3px}
+  /* Improved Heatmap with calendar layout */
+  .heatmap-container{
+    background:#f8fafc;
+    border-radius:12px;
+    padding:16px;
+    border:1px solid #e5e7eb;
+  }
+  
+  .day-headers{
+    display:grid;
+    grid-template-columns:repeat(7,1fr);
+    gap:4px;
+    margin-bottom:8px;
+  }
+  
+  .day-header{
+    text-align:center;
+    font-size:11px;
+    font-weight:600;
+    color:var(--muted);
+    padding:4px 0;
+  }
+  
+  .heat-grid{
+    display:grid;
+    grid-template-columns:repeat(7,1fr);
+    gap:4px;
+  }
+  
+  .day-cell{
+    aspect-ratio:1;
+    min-height:36px;
+    background:#ffffff;
+    border-radius:8px;
+    padding:4px;
+    display:grid;
+    grid-template-rows:repeat(3,1fr);
+    gap:2px;
+    border:1px solid #e5e7eb;
+    position:relative;
+    transition:all 0.2s ease;
+  }
+  
+  .day-cell:hover{
+    transform:translateY(-1px);
+    box-shadow:0 4px 12px rgba(0,0,0,0.1);
+  }
+  
+  .day-cell.empty{
+    background:#f9fafb;
+    border:1px solid #f3f4f6;
+  }
+  
+  .practice-bar{
+    border-radius:3px;
+    background:var(--empty);
+    display:flex;
+    align-items:center;
+    justify-content:center;
+    position:relative;
+    transition:all 0.2s ease;
+  }
+  
+  .practice-bar .practice-label{
+    font-size:8px;
+    font-weight:800;
+    color:#9ca3af;
+    line-height:1;
+  }
+  
+  .practice-bar.completed .practice-label{
+    color:#ffffff;
+  }
+  
+  .practice-bar.read.completed{background:var(--read)}
+  .practice-bar.intimacy.completed{background:var(--intimacy)}
+  .practice-bar.memory.completed{background:var(--memory)}
+  
+  .day-number{
+    position:absolute;
+    top:-6px;
+    right:-6px;
+    background:rgba(255,255,255,0.9);
+    border:1px solid #e5e7eb;
+    border-radius:50%;
+    width:16px;
+    height:16px;
+    display:flex;
+    align-items:center;
+    justify-content:center;
+    font-size:8px;
+    font-weight:600;
+    color:var(--muted);
+  }
+
+  .legend{
+    display:flex;
+    align-items:center;
+    gap:16px;
+    margin-top:16px;
+    flex-wrap:wrap;
+    justify-content:center;
+  }
+  
+  .chip{
+    display:flex;
+    align-items:center;
+    gap:8px;
+    background:rgba(255,255,255,0.7);
+    padding:6px 12px;
+    border-radius:20px;
+    border:1px solid #e5e7eb;
+  }
+  
+  .color-swatch{
+    width:16px;
+    height:16px;
+    border-radius:4px;
+    border:1px solid rgba(255,255,255,0.3);
+  }
+  
+  .chip-label{
+    font-size:12px;
+    font-weight:500;
+    color:var(--ink);
+  }
 
   /* Word cloud */
   .cloudWrap{position:relative; height:340px; background:#f8fafc; border-radius:12px; overflow:hidden; border:1px solid #e5e7eb}
@@ -115,11 +230,31 @@
   <div class="grid bottom section" style="margin-top:18px;">
     <div class="card">
       <h2>Daily Consistency Heatmap (last 6 weeks)</h2>
-      <div id="heat" class="heat"></div>
+      <div class="heatmap-container">
+        <div class="day-headers">
+          <div class="day-header">S</div>
+          <div class="day-header">M</div>
+          <div class="day-header">T</div>
+          <div class="day-header">W</div>
+          <div class="day-header">T</div>
+          <div class="day-header">F</div>
+          <div class="day-header">S</div>
+        </div>
+        <div id="heat" class="heat-grid"></div>
+      </div>
       <div class="legend">
-        <div class="chip"><div class="sw" style="background:var(--read)"></div><span class="sub">Bible Reading</span></div>
-        <div class="chip"><div class="sw" style="background:var(--intimacy)"></div><span class="sub">Morning Intimacy</span></div>
-        <div class="chip"><div class="sw" style="background:var(--memory)"></div><span class="sub">Scripture Memorization</span></div>
+        <div class="chip">
+          <div class="color-swatch" style="background:var(--read)"></div>
+          <span class="chip-label">Bible Reading</span>
+        </div>
+        <div class="chip">
+          <div class="color-swatch" style="background:var(--intimacy)"></div>
+          <span class="chip-label">Morning Intimacy</span>
+        </div>
+        <div class="chip">
+          <div class="color-swatch" style="background:var(--memory)"></div>
+          <span class="chip-label">Scripture Memorization</span>
+        </div>
       </div>
     </div>
     <div class="card">
@@ -263,7 +398,7 @@
 
     document.getElementById("ontrack").textContent = (variance>=0?"+":"")+variance;
     document.getElementById("ontrackHelp").textContent =
-      `By day ${dayNum}, ~${Math.round(expectedCompletedFor95)} completed units is 95% pace. You’ve completed ${Math.round(completed)}, so you’re ${variance>=0?Math.abs(variance)+" ahead":Math.abs(variance)+" behind"}.`;
+      `By day ${dayNum}, ~${Math.round(expectedCompletedFor95)} completed units is 95% pace. You've completed ${Math.round(completed)}, so you're ${variance>=0?Math.abs(variance)+" ahead":Math.abs(variance)+" behind"}.`;
 
     document.getElementById("days").textContent = `Day ${dayNum} / 90 — ${daysLeft} left`;
     document.getElementById("period").textContent = `Program started ${ymd(programStart)}`;
@@ -294,33 +429,65 @@
       (shortfall>0 ? `To hit 95%, aim for ~${Math.ceil(neededPerWeek)} extra unit(s) per week for the remaining ${weeksLeft} week(s).`
                     : `You're on track for 95%+ 🎉`);
 
-    // Heatmap: last 42 days, three mini-bars per day WITH LETTERS
-    const allDates = Object.keys(dayMap).sort().slice(-42);
+    // Improved Heatmap: Create calendar-style layout
     const heat = document.getElementById("heat");
-    allDates.forEach(d=>{
-      const day = document.createElement("div");
-      day.className = "day";
-      const vals = dayMap[d] || {"Bible Reading":0,"Morning Intimacy":0,"Scripture Memorization":0};
-
-      ["Bible Reading","Morning Intimacy","Scripture Memorization"].forEach(pr=>{
-        const done = Number(vals[pr]) >= 1;
-        const b = document.createElement("div");
-        b.className = "bar " + (done ? DAILY_COLORS[pr] + " on" : "");
-        if (!done) b.className += " " + DAILY_COLORS[pr]; // keep color outline when off
-        b.classList.add(DAILY_COLORS[pr]);
-        const lbl = document.createElement("span");
-        lbl.className = "lbl";
-        lbl.textContent = LETTER[pr];
-        b.appendChild(lbl);
-        day.appendChild(b);
-      });
-
-      day.title = `${d}\nReading: ${vals["Bible Reading"]? "✓":"–"} • Intimacy: ${vals["Morning Intimacy"]? "✓":"–"} • Memorization: ${vals["Scripture Memorization"]? "✓":"–"}`;
-      heat.appendChild(day);
-    });
+    heat.innerHTML = "";
+    
+    // Get date range for last 6 weeks (42 days)
+    const endDate = new Date();
+    const startDate = new Date(endDate);
+    startDate.setDate(endDate.getDate() - 41); // 42 days total including today
+    
+    // Find the start of the week (Sunday) for proper calendar alignment
+    const calendarStart = new Date(startDate);
+    calendarStart.setDate(startDate.getDate() - startDate.getDay());
+    
+    // Calculate total cells needed (always complete weeks)
+    const totalDays = Math.ceil(42 / 7) * 7;
+    
+    for (let i = 0; i < totalDays; i++) {
+      const currentDate = new Date(calendarStart);
+      currentDate.setDate(calendarStart.getDate() + i);
+      
+      const dateStr = ymd(currentDate);
+      const dayOfMonth = currentDate.getDate();
+      const isInRange = currentDate >= startDate && currentDate <= endDate;
+      
+      const dayCell = document.createElement("div");
+      dayCell.className = isInRange ? "day-cell" : "day-cell empty";
+      
+      if (isInRange) {
+        const vals = dayMap[dateStr] || {"Bible Reading":0,"Morning Intimacy":0,"Scripture Memorization":0};
+        
+        // Add day number
+        const dayNum = document.createElement("div");
+        dayNum.className = "day-number";
+        dayNum.textContent = dayOfMonth;
+        dayCell.appendChild(dayNum);
+        
+        // Add practice bars
+        ["Bible Reading","Morning Intimacy","Scripture Memorization"].forEach(practice => {
+          const completed = Number(vals[practice]) >= 1;
+          const bar = document.createElement("div");
+          bar.className = `practice-bar ${DAILY_COLORS[practice]} ${completed ? 'completed' : ''}`;
+          
+          const label = document.createElement("span");
+          label.className = "practice-label";
+          label.textContent = LETTER[practice];
+          bar.appendChild(label);
+          
+          dayCell.appendChild(bar);
+        });
+        
+        // Tooltip
+        dayCell.title = `${dateStr}\nReading: ${vals["Bible Reading"] ? "✓" : "–"} • Intimacy: ${vals["Morning Intimacy"] ? "✓" : "–"} • Memorization: ${vals["Scripture Memorization"] ? "✓" : "–"}`;
+      }
+      
+      heat.appendChild(dayCell);
+    }
 
     /* ===== Word Cloud from comment_general + comment_other ===== */
-    const STOP = new Set(("the a an and or to of in for with on at is are am be this that it as i we you they he she was were have has had from by not n/a na week weeks day days because due just really very i’m im ive i've").split(" "));
+    const STOP = new Set(("the a an and or to of in for with on at is are am be this that it as i we you they he she was were have has had from by not n/a na week weeks day days because due just really very i'm im ive i've").split(" "));
     const freq = {};
     let samples = 0;
     fact.forEach(r=>{

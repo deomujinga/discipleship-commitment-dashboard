@@ -582,17 +582,21 @@
     const palettes = ["palette1","palette2","palette3","palette4","palette5","palette6"];
     const W = cloud.clientWidth, H = cloud.clientHeight;
 
-    entries.forEach(([w,c],i)=>{
-      const weight = c/max;
-      const bucket = weight>.9?6: weight>.75?5: weight>.6?4: weight>.45?3: weight>.3?2:1;
+    entries.forEach(([category,score],i)=>{
+      const weight = score/max;
+      const bucket = weight>.8?6: weight>.6?5: weight>.45?4: weight>.3?3: weight>.15?2:1;
       const span = document.createElement("div");
       span.className = `word w${bucket} ${palettes[i%palettes.length]}`;
-      span.textContent = w;
-      const rot = bucket>=6 ? 0 : (Math.random()<0.5? -1:1) * Math.floor(Math.random()*10+5);
+      span.textContent = category;
+      span.title = `${category}: mentioned ${score} times`;
+      
+      // Less rotation for category names (more readable)
+      const rot = bucket>=5 ? 0 : (Math.random()<0.7? 0 : (Math.random()<0.5? -1:1) * Math.floor(Math.random()*8+3));
       span.style.transform = `rotate(${rot}deg)`;
-      const pad = 20;
-      const left = Math.max(4, Math.min(W-160, Math.random()*(W-pad*2)+pad));
-      const top  = Math.max(4, Math.min(H-60, Math.random()*(H-pad*2)+pad));
+      
+      const pad = 30;
+      const left = Math.max(10, Math.min(W-200, Math.random()*(W-pad*2)+pad));
+      const top  = Math.max(10, Math.min(H-80, Math.random()*(H-pad*2)+pad));
       span.style.left = left+"px";
       span.style.top = top+"px";
       cloud.appendChild(span);

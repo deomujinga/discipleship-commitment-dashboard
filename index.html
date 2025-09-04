@@ -20,24 +20,91 @@
   header{padding:20px 24px 8px;display:flex;justify-content:space-between;align-items:center}
   header h1{margin:0;font-size:clamp(20px,3vw,28px)}
   header .who{color:var(--muted);font-size:14px}
-  .wrap{padding:0 24px 40px;max-width:1200px;margin:0 auto}
+  .wrap{padding:0 24px 40px;max-width:1400px;margin:0 auto}
 
-  /* KPI grid auto-fit so we can add Strongest Area */
-  .kpis{display:grid;gap:18px;grid-template-columns:repeat(auto-fit,minmax(220px,1fr))}
+  /* KPI cards in single row - updated to force single row */
+  .kpis{
+    display:grid;
+    gap:18px;
+    grid-template-columns:repeat(5, 1fr);
+    margin-bottom:24px;
+  }
+  
+  /* Responsive behavior for smaller screens */
+  @media (max-width:1200px){
+    .kpis{grid-template-columns:repeat(3, 1fr)}
+    .kpis .card:nth-child(4), .kpis .card:nth-child(5){
+      grid-column:span 1;
+    }
+  }
+  
+  @media (max-width:768px){
+    .kpis{grid-template-columns:repeat(2, 1fr)}
+    .kpis .card:nth-child(5){
+      grid-column:span 2;
+    }
+  }
+  
+  @media (max-width:480px){
+    .kpis{grid-template-columns:1fr}
+  }
+
   .grid{display:grid;gap:18px}
   .mid{grid-template-columns:2fr 1.4fr}
   .bottom{grid-template-columns:1.6fr 1.4fr}
   @media (max-width:980px){.mid,.bottom{grid-template-columns:1fr}}
 
-  .card{background:var(--card);border-radius:var(--radius);box-shadow:var(--shadow);padding:20px}
-  .card h3{margin:0 0 8px;font-size:16px;color:var(--muted);font-weight:600;letter-spacing:.2px}
+  .card{
+    background:var(--card);
+    border-radius:var(--radius);
+    box-shadow:var(--shadow);
+    padding:20px;
+    min-height:140px;
+    display:flex;
+    flex-direction:column;
+  }
+  
+  .card h3{
+    margin:0 0 8px;
+    font-size:14px;
+    color:var(--muted);
+    font-weight:600;
+    letter-spacing:.2px;
+    text-transform:uppercase;
+  }
+  
   .card h2{font-size:18px;margin:0 0 16px;color:#111827;font-weight:700}
-  .big{font-size:clamp(22px,4vw,30px);margin:6px 0 4px;font-weight:800}
-  .sub{font-size:12px;color:var(--muted)}
-  .pill{display:inline-block;padding:4px 10px;border-radius:999px;border:1px solid #e5e7eb;font-size:12px;font-weight:600;margin-top:6px}
-  .ok{background:#e8f8ee;color:#065f46}
-  .warn{background:#fff7e6;color:#92400e}
-  .bad{background:#fdeaea;color:#991b1b}
+  
+  .big{
+    font-size:clamp(20px,3vw,26px);
+    margin:6px 0 4px;
+    font-weight:800;
+    flex-grow:1;
+    display:flex;
+    align-items:center;
+  }
+  
+  .sub{
+    font-size:11px;
+    color:var(--muted);
+    line-height:1.4;
+    margin-top:auto;
+  }
+  
+  .pill{
+    display:inline-block;
+    padding:4px 10px;
+    border-radius:999px;
+    border:1px solid #e5e7eb;
+    font-size:11px;
+    font-weight:600;
+    margin-top:6px;
+    width:fit-content;
+  }
+  
+  .ok{background:#e8f8ee;color:#065f46;border-color:#10b981}
+  .warn{background:#fff7e6;color:#92400e;border-color:#f59e0b}
+  .bad{background:#fdeaea;color:#991b1b;border-color:#ef4444}
   .section h2{font-size:18px;margin:0 0 12px;color:#111827}
   canvas{width:100%;height:auto;max-height:420px}
 
@@ -186,7 +253,7 @@
 </header>
 
 <div class="wrap">
-  <!-- KPI CARDS -->
+  <!-- KPI CARDS - Now in single row -->
   <div class="kpis">
     <div class="card">
       <h3>Overall Attainment</h3>
@@ -221,7 +288,7 @@
   </div>
 
   <!-- MID -->
-  <div class="grid mid section" style="margin-top:18px;">
+  <div class="grid mid section">
     <div class="card"><h2>Weekly Attainment Trend</h2><canvas id="trend"></canvas></div>
     <div class="card"><h2>Practice Balance (Radar)</h2><canvas id="radar"></canvas><div id="projection" class="sub" style="margin-top:8px"></div></div>
   </div>

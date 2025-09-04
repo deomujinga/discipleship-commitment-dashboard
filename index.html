@@ -429,21 +429,33 @@
       (shortfall>0 ? `To hit 95%, aim for ~${Math.ceil(neededPerWeek)} extra unit(s) per week for the remaining ${weeksLeft} week(s).`
                     : `You're on track for 95%+ 🎉`);
 
-    // Improved Heatmap: Create calendar-style layout
+    // Improved Heatmap: Create calendar-style layout using existing data
     const heat = document.getElementById("heat");
     heat.innerHTML = "";
     
-    // Get date range for last 6 weeks (42 days)
-    const endDate = new Date();
-    const startDate = new Date(endDate);
-    startDate.setDate(endDate.getDate() - 41); // 42 days total including today
+    // Use the existing logic to get the last 42 days of data
+    const allDates = Object.keys(dayMap).sort().slice(-42);
     
-    // Find the start of the week (Sunday) for proper calendar alignment
-    const calendarStart = new Date(startDate);
-    calendarStart.setDate(startDate.getDate() - startDate.getDay());
+    if (allDates.length === 0) {
+      // No data available, show message
+      heat.innerHTML = "<div style='grid-column: 1/-1; text-align: center; padding: 20px; color: var(--muted);'>No daily practice data available yet</div>";
+      return;
+    }
     
-    // Calculate total cells needed (always complete weeks)
-    const totalDays = Math.ceil(42 / 7) * 7;
+    // Get the date range from actual data
+    const firstDate = new Date(allDates[0]);
+    const lastDate = new Date(allDates[allDates.length - 1]);
+    
+    // Find the start of the week (Sunday) for the first date
+    const calendarStart = new Date(firstDate);
+    calendarStart.setDate(firstDate.getDate() - firstDate.getDay());
+    
+    // Find the end of the week (Saturday) for the last date
+    const calendarEnd = new Date(lastDate);
+    calendarEnd.setDate(lastDate.getDate() + (6 - lastDate.getDay()));
+    
+    // Calculate total days needed for complete weeks
+    const totalDays = Math.round((calendarEnd - calendarStart) / (1000 * 60 * 60 * 24)) + 1;
     
     for (let i = 0; i < totalDays; i++) {
       const currentDate = new Date(calendarStart);
@@ -451,13 +463,13 @@
       
       const dateStr = ymd(currentDate);
       const dayOfMonth = currentDate.getDate();
-      const isInRange = currentDate >= startDate && currentDate <= endDate;
+      const hasData = dayMap[dateStr] !== undefined;
       
       const dayCell = document.createElement("div");
-      dayCell.className = isInRange ? "day-cell" : "day-cell empty";
+      dayCell.className = hasData ? "day-cell" : "day-cell empty";
       
-      if (isInRange) {
-        const vals = dayMap[dateStr] || {"Bible Reading":0,"Morning Intimacy":0,"Scripture Memorization":0};
+      if (hasData) {
+        const vals = dayMap[dateStr];
         
         // Add day number
         const dayNum = document.createElement("div");
@@ -481,6 +493,27 @@
         
         // Tooltip
         dayCell.title = `${dateStr}\nReading: ${vals["Bible Reading"] ? "✓" : "–"} • Intimacy: ${vals["Morning Intimacy"] ? "✓" : "–"} • Memorization: ${vals["Scripture Memorization"] ? "✓" : "–"}`;
+      } else if (currentDate >= firstDate && currentDate <= lastDate) {
+        // Show empty state for dates within range but no data
+        const dayNum = document.createElement("div");
+        dayNum.className = "day-number";
+        dayNum.textContent = dayOfMonth;
+        dayCell.appendChild(dayNum);
+        
+        // Add empty practice bars
+        ["Bible Reading","Morning Intimacy","Scripture Memorization"].forEach(practice => {
+          const bar = document.createElement("div");
+          bar.className = `practice-bar ${DAILY_COLORS[practice]}`;
+          
+          const label = document.createElement("span");
+          label.className = "practice-label";
+          label.textContent = LETTER[practice];
+          bar.appendChild(label);
+          
+          dayCell.appendChild(bar);
+        });
+        
+        dayCell.title = `${dateStr}\nNo data recorded`;
       }
       
       heat.appendChild(dayCell);

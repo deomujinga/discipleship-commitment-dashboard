@@ -22,12 +22,9 @@
   header .who{color:var(--muted);font-size:14px}
   .wrap{padding:0 24px 40px;max-width:1400px;margin:0 auto}
 
-  /* KPI cards in single row */
+  /* KPI cards */
   .kpis{
-    display:grid;
-    gap:18px;
-    grid-template-columns:repeat(5, 1fr);
-    margin-bottom:24px;
+    display:grid; gap:18px; grid-template-columns:repeat(5, 1fr); margin-bottom:24px;
   }
   @media (max-width:1200px){
     .kpis{grid-template-columns:repeat(3, 1fr)}
@@ -54,27 +51,12 @@
     flex-direction:column;
   }
   .card h3{
-    margin:0 0 8px;
-    font-size:14px;
-    color:var(--muted);
-    font-weight:600;
-    letter-spacing:.2px;
-    text-transform:uppercase;
+    margin:0 0 8px; font-size:14px; color:var(--muted); font-weight:600; letter-spacing:.2px; text-transform:uppercase;
   }
   .card h2{font-size:18px;margin:0 0 16px;color:#111827;font-weight:700}
-  .big{
-    font-size:clamp(20px,3vw,26px);
-    margin:6px 0 4px;
-    font-weight:800;
-    flex-grow:1;
-    display:flex;
-    align-items:center;
-  }
+  .big{font-size:clamp(20px,3vw,26px); margin:6px 0 4px; font-weight:800; flex-grow:1; display:flex; align-items:center}
   .sub{font-size:11px;color:var(--muted);line-height:1.4;margin-top:auto}
-  .pill{
-    display:inline-block;padding:4px 10px;border-radius:999px;border:1px solid #e5e7eb;
-    font-size:11px;font-weight:600;margin-top:6px;width:fit-content
-  }
+  .pill{display:inline-block;padding:4px 10px;border-radius:999px;border:1px solid #e5e7eb;font-size:11px;font-weight:600;margin-top:6px;width:fit-content}
   .ok{background:#e8f8ee;color:#065f46;border-color:#10b981}
   .warn{background:#fff7e6;color:#92400e;border-color:#f59e0b}
   .bad{background:#fdeaea;color:#991b1b;border-color:#ef4444}
@@ -90,16 +72,23 @@
   .day-cell:hover{transform:translateY(-1px);box-shadow:0 4px 12px rgba(0,0,0,.1)}
   .day-cell.empty{background:#f9fafb;border:1px solid #f3f4f6}
   .practice-bar{border-radius:3px;background:var(--empty);display:flex;align-items:center;justify-content:center;position:relative;transition:all .2s ease}
-  .practice-bar .practice-label{font-size:8px;font-weight:800;color:#9ca3af;line-height:1}
+  .practice-bar .practice-label{font-size:8px;font-weight:800;color:#6b7280;line-height:1}
   .practice-bar.completed .practice-label{color:#ffffff}
   .practice-bar.read.completed{background:var(--read)}
   .practice-bar.intimacy.completed{background:var(--intimacy)}
   .practice-bar.memory.completed{background:var(--memory)}
+  /* NEW: partial state (half-filled) */
+  .practice-bar.partial .practice-label{color:#ffffff}
+  .practice-bar.read.partial{background:linear-gradient(90deg,var(--read) 0 50%, var(--empty) 50% 100%)}
+  .practice-bar.intimacy.partial{background:linear-gradient(90deg,var(--intimacy) 0 50%, var(--empty) 50% 100%)}
+  .practice-bar.memory.partial{background:linear-gradient(90deg,var(--memory) 0 50%, var(--empty) 50% 100%)}
+
   .day-number{position:absolute;top:-6px;right:-6px;background:rgba(255,255,255,.9);border:1px solid #e5e7eb;border-radius:50%;width:16px;height:16px;display:flex;align-items:center;justify-content:center;font-size:8px;font-weight:600;color:var(--muted)}
   .legend{display:flex;align-items:center;gap:16px;margin-top:16px;flex-wrap:wrap;justify-content:center}
   .chip{display:flex;align-items:center;gap:8px;background:rgba(255,255,255,.7);padding:6px 12px;border-radius:20px;border:1px solid #e5e7eb}
   .color-swatch{width:16px;height:16px;border-radius:4px;border:1px solid rgba(255,255,255,.3)}
   .chip-label{font-size:12px;font-weight:500;color:var(--ink)}
+  .legend-note{width:100%;text-align:center;font-size:10px;color:var(--muted);margin-top:4px}
 
   /* Progress Velocity (Option B) */
   .velocity-wrap{display:flex;flex-direction:column;gap:12px}
@@ -112,10 +101,7 @@
   .accel.ok .dot{background:var(--ok)} .accel.warn .dot{background:var(--warn)} .accel.bad .dot{background:var(--bad)}
   .velocity-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:10px}
   @media (max-width:700px){.velocity-grid{grid-template-columns:1fr}}
-  .vrow{
-    border:1px solid #e5e7eb;border-radius:12px;padding:10px 12px;background:#ffffff;
-    display:flex;justify-content:space-between;align-items:center;gap:12px
-  }
+  .vrow{border:1px solid #e5e7eb;border-radius:12px;padding:10px 12px;background:#ffffff;display:flex;justify-content:space-between;align-items:center;gap:12px}
   .vname{font-weight:700;font-size:13px}
   .vdelta{font-weight:800}
   .up{color:var(--ok)} .down{color:var(--bad)} .flat{color:#6b7280}
@@ -135,7 +121,10 @@
       <h3>Overall Attainment</h3>
       <div id="attainment" class="big">—</div>
       <div id="attnFlag" class="pill">—</div>
-      <div class="sub">Completed so far ÷ possible so far. Target ≥ 95% to succeed by Day 90.</div>
+      <div class="sub">
+        Completed so far ÷ possible so far. Target ≥ 95% to succeed by Day 90.
+        <br><span style="font-size:10px;color:var(--muted)">Legend: Done = 1, Partial = 0–&lt;1, Not done = 0</span>
+      </div>
     </div>
 
     <div class="card">
@@ -184,10 +173,11 @@
         <div class="chip"><div class="color-swatch" style="background:var(--read)"></div><span class="chip-label">Bible Reading</span></div>
         <div class="chip"><div class="color-swatch" style="background:var(--intimacy)"></div><span class="chip-label">Morning Intimacy</span></div>
         <div class="chip"><div class="color-swatch" style="background:var(--memory)"></div><span class="chip-label">Scripture Memorization</span></div>
+        <div class="legend-note">Symbols: ✓ = Done (1), ½ = Partial (0–&lt;1), – = Not done (0)</div>
       </div>
     </div>
 
-    <!-- REPLACED WORD CLOUD with PROGRESS VELOCITY (Option B) -->
+    <!-- PROGRESS VELOCITY (Option B) -->
     <div class="card">
       <h2>Progress Velocity (Momentum Arrows)</h2>
       <div class="velocity-wrap">
@@ -257,11 +247,6 @@
       return;
     }
 
-    // comment keys (robust)
-    const sample = fact[0];
-    const KEY_COMMENT_GENERAL = findKeyExactish(sample, "comment_general") || "comment_general";
-    const KEY_COMMENT_OTHER   = findKeyExactish(sample, "comment_other")   || "comment_other";
-
     // Program timing
     const weekStarts = fact.map(r=>pd(r.week_start)).filter(Boolean).sort((a,b)=>a-b);
     const programStart = sod(weekStarts[0]);
@@ -270,14 +255,15 @@
     const daysLeft = Math.max(0, 90 - dayNum);
     const totalWeeksFinal = 13; // ceil(90/7)
 
-    // Aggregations
+    // Aggregations (partials allowed because we sum 'value' as a number)
     let completed=0, possible=0;
     const byPractice={}, byWeek={}, byWeekPractice={}; // week -> practice -> {done,total}
     const dayMap = {}; // date -> { three dailies }
 
     fact.forEach(r=>{
-      const val = Number(r.value||0);
-      possible += 1; completed += val;
+      const val = Number(r.value || 0);  // can be 0, 0.5, 1, etc.
+      possible += 1;
+      completed += val;
 
       const prac = r.practice;
       byPractice[prac] = byPractice[prac] || {done:0,total:0};
@@ -295,7 +281,8 @@
       if (DAILY_PRACTICES.has(prac)) {
         const d = r.date;
         if (!dayMap[d]) dayMap[d] = {"Bible Reading":0,"Morning Intimacy":0,"Scripture Memorization":0};
-        dayMap[d][prac] = Math.min(1, Number(r.value||0));
+        // store fractional value (cap at 1 for visuals)
+        dayMap[d][prac] = Math.max(0, Math.min(1, val));
       }
     });
 
@@ -336,7 +323,7 @@
     document.getElementById("weak").textContent = weakest ? `${weakest} (${pct(weakestPct)})` : "—";
     document.getElementById("strong").textContent = strongest ? `${strongest} (${pct(strongestPct)})` : "—";
 
-    // Weekly line
+    // Weekly line (already counts partials)
     const wLabels = Object.keys(byWeek).sort();
     const wPct = wLabels.map(w => {
       const a = byWeek[w]; return a.total ? Math.round(1000*(a.done/a.total))/10 : 0;
@@ -347,7 +334,7 @@
       options:{ responsive:true, scales:{ y:{ suggestedMin:0, suggestedMax:100 } } }
     });
 
-    // Radar
+    // Radar (already counts partials)
     const pLabels = Object.keys(byPractice);
     const pPct = pLabels.map(k => byPractice[k].done/byPractice[k].total*100);
     new Chart(document.getElementById("radar"), {
@@ -360,12 +347,12 @@
       (shortfall>0 ? `To hit 95%, aim for ~${Math.ceil(neededPerWeek)} extra unit(s) per week for the remaining ${weeksLeft} week(s).`
                     : `You're on track for 95%+ 🎉`);
 
-    /* ===== Heatmap (unchanged) ===== */
+    /* ===== Heatmap with partial visuals ===== */
     const heat = document.getElementById("heat");
     heat.innerHTML = "";
     const endDate = new Date();
     const startDate = new Date(endDate);
-    startDate.setDate(endDate.getDate() - 41); // 42 days total including today
+    startDate.setDate(endDate.getDate() - 41); // 42 days
     const calendarStart = new Date(startDate);
     calendarStart.setDate(startDate.getDate() - startDate.getDay());
     const totalDays = Math.ceil(42 / 7) * 7;
@@ -382,38 +369,42 @@
 
       if (isInRange) {
         const vals = dayMap[dateStr] || {"Bible Reading":0,"Morning Intimacy":0,"Scripture Memorization":0};
-        const dayNumBadge = document.createElement("div");
-        dayNumBadge.className = "day-number";
-        dayNumBadge.textContent = dayOfMonth;
-        dayCell.appendChild(dayNumBadge);
+        const badge = document.createElement("div");
+        badge.className = "day-number";
+        badge.textContent = dayOfMonth;
+        dayCell.appendChild(badge);
 
         ["Bible Reading","Morning Intimacy","Scripture Memorization"].forEach(practice => {
-          const done = Number(vals[practice]) >= 1;
+          const v = Number(vals[practice]) || 0;
           const bar = document.createElement("div");
-          bar.className = `practice-bar ${DAILY_COLORS[practice]} ${done ? 'completed' : ''}`;
+          const colorClass = DAILY_COLORS[practice];
+          let stateClass = "";
+          if (v >= 1) stateClass = "completed";
+          else if (v > 0) stateClass = "partial";
+
+          bar.className = `practice-bar ${colorClass} ${stateClass}`;
           const label = document.createElement("span");
           label.className = "practice-label";
-          label.textContent = {"Bible Reading":"R","Morning Intimacy":"I","Scripture Memorization":"M"}[practice];
+          // ✓ for done, ½ for partial, – for none
+          label.textContent = v>=1 ? "✓" : (v>0 ? "½" : LETTER[practice].slice(0,1)); // keeps letter for empty cell clarity
+          if (v===0) label.style.color = "#9ca3af";
           bar.appendChild(label);
           dayCell.appendChild(bar);
         });
 
-        dayCell.title = `${dateStr}\nReading: ${vals["Bible Reading"] ? "✓" : "–"} • Intimacy: ${vals["Morning Intimacy"] ? "✓" : "–"} • Memorization: ${vals["Scripture Memorization"] ? "✓" : "–"}`;
+        const sym = (v)=> v>=1 ? "✓" : (v>0 ? "½" : "–");
+        dayCell.title =
+          `${dateStr}\n`+
+          `Reading: ${sym(vals["Bible Reading"])} • Intimacy: ${sym(vals["Morning Intimacy"])} • Memorization: ${sym(vals["Scripture Memorization"])}`;
       }
       heat.appendChild(dayCell);
     }
 
-    /* ===== Progress Velocity (Option B) =====
-       - Acceleration Score: overall (% recent 3 weeks - % first 3 weeks)
-       - Per-practice momentum: same delta by practice
-       - Consistency Momentum: simple streak & bounce-back proxy
-    */
+    /* ===== Progress Velocity (Option B) ===== */
     function avg(arr){ if(!arr.length) return 0; return arr.reduce((a,b)=>a+b,0)/arr.length; }
-    // build weekly overall % list (already have wPct)
-    // Acceleration Score:
     const first3 = wPct.slice(0,3);
     const recent3 = wPct.slice(-3);
-    const accelDelta = (avg(recent3) - avg(first3)); // percentage points
+    const accelDelta = (avg(recent3) - avg(first3)); // pct points
 
     const accelEl = document.getElementById("accel");
     const accelText = document.getElementById("accelText");
@@ -421,10 +412,8 @@
     accelEl.classList.remove("ok","warn","bad");
     accelEl.classList.add(accelDelta>+1 ? "ok" : (accelDelta<-1 ? "bad" : "warn"));
 
-    // Per-practice weekly % arrays
     const weeksSorted = Object.keys(byWeekPractice).sort();
     const practices = Object.keys(byPractice);
-
     function weeklyPctByPractice(practice){
       return weeksSorted.map(w=>{
         const rec = (byWeekPractice[w] && byWeekPractice[w][practice]) || {done:0,total:0};
@@ -438,54 +427,43 @@
       const series = weeklyPctByPractice(pr);
       const f3 = series.slice(0,3);
       const r3 = series.slice(-3);
-      const delta = avg(r3) - avg(f3); // percentage points
+      const delta = avg(r3) - avg(f3);
 
       const row = document.createElement("div");
       row.className = "vrow";
-
       const name = document.createElement("div");
-      name.className = "vname";
-      name.textContent = pr;
-
+      name.className = "vname"; name.textContent = pr;
       const deltaEl = document.createElement("div");
       const trendClass = delta>+1 ? "up" : (delta<-1 ? "down" : "flat");
       const arrow = delta>+1 ? "↗" : (delta<-1 ? "↘" : "→");
       deltaEl.className = `vdelta ${trendClass}`;
       deltaEl.textContent = `${arrow} ${delta>=0?"+":""}${delta.toFixed(1)} pts`;
-
-      row.appendChild(name);
-      row.appendChild(deltaEl);
-
+      row.appendChild(name); row.appendChild(deltaEl);
       velocityGrid.appendChild(row);
     });
 
-    // Trajectory hint (tie to projectedFinalPct and 95% goal)
     const traj = document.getElementById("trajectoryHint");
     traj.textContent = `Trajectory Projection: finish at ${pct(projectedFinalPct)} vs goal 95%.`;
 
-    // Consistency Momentum: simple streak + "bounce-back" proxy.
-    // Streak = consecutive days (recent) with at least 2/3 dailies completed.
-    // Bounce-back proxy = average of last 3 weekly gains (if positive).
-    function dateRangeArray(start, end){
+    // Consistency Momentum: streak (≥2 of 3 dailies) & bounce-back speed
+    function ymdRange(start, end){
       const arr=[]; const d=new Date(start);
       while(d<=end){ arr.push(ymd(d)); d.setDate(d.getDate()+1); }
       return arr;
     }
-    const dates = dateRangeArray(new Date(programStart), today);
+    const dates = ymdRange(new Date(programStart), today);
     let streak=0, i=dates.length-1;
     while(i>=0){
       const vals = dayMap[dates[i]] || {"Bible Reading":0,"Morning Intimacy":0,"Scripture Memorization":0};
-      const count = (vals["Bible Reading"]?1:0)+(vals["Morning Intimacy"]?1:0)+(vals["Scripture Memorization"]?1:0);
+      const count = (vals["Bible Reading"]>=1?1:0)+(vals["Morning Intimacy"]>=1?1:0)+(vals["Scripture Memorization"]>=1?1:0);
       if (count>=2){ streak++; i--; } else break;
     }
-    // Weekly gains (overall)
     const gains = [];
     for(let j=1;j<wPct.length;j++){ gains.push(wPct[j]-wPct[j-1]); }
     const last3Gains = gains.slice(-3).filter(g=>g>0);
-    const bounce = last3Gains.length? avg(last3Gains).toFixed(1) : "0.0";
-
-    const consistency = document.getElementById("consistencyHint");
-    consistency.textContent = `Consistency Momentum: current streak ${streak} day(s) (≥2/3 dailies). Recent bounce-back speed ~ +${bounce} pts/week.`;
+    const bounce = last3Gains.length? (avg(last3Gains)).toFixed(1) : "0.0";
+    document.getElementById("consistencyHint").textContent =
+      `Consistency Momentum: current streak ${streak} day(s) (≥2/3 dailies). Recent bounce-back speed ~ +${bounce} pts/week.`;
   })();
 </script>
 </body>

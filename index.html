@@ -40,15 +40,19 @@
   .section h2{font-size:18px;margin:0 0 12px;color:#111827}
   canvas{width:100%;height:auto;max-height:420px}
 
-  /* Heatmap with three mini-bars per day with visible labels */
-  .heat{display:grid;grid-template-columns:repeat(14,1fr);gap:6px}
-  .day{height:20px;background:#f3f4f6;border-radius:6px;padding:3px;display:grid;grid-template-columns:repeat(3,1fr);gap:3px;border:1px solid #eef2f7}
-  .bar{position:relative;height:100%;border-radius:4px;background:var(--empty);display:flex;align-items:center;justify-content:center}
-  .bar .lbl{font-size:10px;font-weight:800;color:#9ca3af;line-height:1}
-  .bar.on .lbl{color:#ffffff}
-  .bar.read.on{background:var(--read)}
-  .bar.intimacy.on{background:var(--intimacy)}
-  .bar.memory.on{background:var(--memory)}
+  /* === Heatmap: 6 rows (weeks) × 7 cols (Sun–Sat) === */
+  .heatWrap{display:flex;flex-direction:column;gap:8px}
+  .wkHeader{display:grid;grid-template-columns:repeat(7,22px);gap:8px;margin-left:2px}
+  .wkHeader span{font-size:10px;color:var(--muted);text-align:center}
+  .heat{display:grid;grid-template-rows:repeat(6, auto);gap:6px}
+  .row{display:grid;grid-template-columns:repeat(7,22px);gap:8px}
+  .cell{width:22px;height:18px;background:#f3f4f6;border-radius:6px;padding:2px;border:1px solid #eef2f7;
+        display:grid;grid-template-rows:repeat(3,1fr);gap:2px}
+  .seg{border-radius:2px;background:var(--empty)}
+  .seg.read.on{background:var(--read)}
+  .seg.intimacy.on{background:var(--intimacy)}
+  .seg.memory.on{background:var(--memory)}
+
   .legend{display:flex;align-items:center;gap:12px;margin-top:10px;flex-wrap:wrap}
   .chip{display:flex;align-items:center;gap:6px}
   .sw{width:20px;height:12px;border-radius:3px}
@@ -115,7 +119,10 @@
   <div class="grid bottom section" style="margin-top:18px;">
     <div class="card">
       <h2>Daily Consistency Heatmap (last 6 weeks)</h2>
-      <div id="heat" class="heat"></div>
+      <div class="heatWrap">
+        <div class="wkHeader" id="wkHeader"></div>
+        <div class="heat" id="heat"></div>
+      </div>
       <div class="legend">
         <div class="chip"><div class="sw" style="background:var(--read)"></div><span class="sub">Bible Reading</span></div>
         <div class="chip"><div class="sw" style="background:var(--intimacy)"></div><span class="sub">Morning Intimacy</span></div>
@@ -137,12 +144,8 @@
   const TARGET = 0.95;
   // Daily set per your spec: Reading, Intimacy, Memorization
   const DAILY_PRACTICES = new Set(["Bible Reading","Morning Intimacy","Scripture Memorization"]);
-  const DAILY_COLORS = {
-    "Bible Reading":"read",
-    "Morning Intimacy":"intimacy",
-    "Scripture Memorization":"memory"
-  };
-  const LETTER = {"Bible Reading":"R","Morning Intimacy":"I","Scripture Memorization":"M"};
+  const DAILY_KEYS = ["Bible Reading","Morning Intimacy","Scripture Memorization"];
+  const WEEKDAYS = ["S","M","T","W","T","F","S"];
 
   /* ======= HELPERS ======= */
   const pid = (new URLSearchParams(location.search).get("id") || "").trim().toLowerCase();
@@ -203,7 +206,8 @@
     // Aggregations
     let completed=0, possible=0;
     const byPractice={}, byWeek={};
-    const dayMap = {}; // date -> { three dailies }
+    // Per-day 0/1 for each daily practice
+    const dayMap = {}; // date -> { Reading, Intimacy, Memory }
     const comments = [];
 
     fact.forEach(r=>{
@@ -233,7 +237,6 @@
     // KPIs
     const attainment = possible ? (completed/possible) : 0;
     const weeksElapsed = Math.max(1, Math.ceil(dayNum/7));
-    // Expected count to be on pace for 95% *by today*
     const expectedPossible = (dayNum*3) + (weeksElapsed*4);  // 3 daily + 4 weekly categories
     const expectedCompletedFor95 = expectedPossible * 0.95;
     const variance = Math.round((completed - expectedCompletedFor95)*10)/10;
@@ -294,30 +297,40 @@
       (shortfall>0 ? `To hit 95%, aim for ~${Math.ceil(neededPerWeek)} extra unit(s) per week for the remaining ${weeksLeft} week(s).`
                     : `You're on track for 95%+ 🎉`);
 
-    // Heatmap: last 42 days, three mini-bars per day WITH LETTERS
-    const allDates = Object.keys(dayMap).sort().slice(-42);
+    // === Heatmap rendering: 6 rows × 7 columns ===
+    // Take the last 42 dates, oldest → newest, then break into chunks of 7 (weeks)
+    const datesSorted = Object.keys(dayMap).sort();
+    const last42 = datesSorted.slice(-42);
+    // If fewer than 42 days exist, left-pad with empty placeholders to fill full weeks
+    while (last42.length < 42) last42.unshift(null);
+
+    // Weekday header
+    const hdr = document.getElementById("wkHeader");
+    WEEKDAYS.forEach(ch => { const s=document.createElement("span"); s.textContent=ch; hdr.appendChild(s); });
+
     const heat = document.getElementById("heat");
-    allDates.forEach(d=>{
-      const day = document.createElement("div");
-      day.className = "day";
-      const vals = dayMap[d] || {"Bible Reading":0,"Morning Intimacy":0,"Scripture Memorization":0};
-
-      ["Bible Reading","Morning Intimacy","Scripture Memorization"].forEach(pr=>{
-        const done = Number(vals[pr]) >= 1;
-        const b = document.createElement("div");
-        b.className = "bar " + (done ? DAILY_COLORS[pr] + " on" : "");
-        if (!done) b.className += " " + DAILY_COLORS[pr]; // keep color outline when off
-        b.classList.add(DAILY_COLORS[pr]);
-        const lbl = document.createElement("span");
-        lbl.className = "lbl";
-        lbl.textContent = LETTER[pr];
-        b.appendChild(lbl);
-        day.appendChild(b);
-      });
-
-      day.title = `${d}\nReading: ${vals["Bible Reading"]? "✓":"–"} • Intimacy: ${vals["Morning Intimacy"]? "✓":"–"} • Memorization: ${vals["Scripture Memorization"]? "✓":"–"}`;
-      heat.appendChild(day);
-    });
+    for (let r=0; r<6; r++){
+      const row = document.createElement("div"); row.className="row";
+      for (let c=0; c<7; c++){
+        const idx = r*7 + c;
+        const d = last42[idx];
+        const cell = document.createElement("div"); cell.className="cell";
+        DAILY_KEYS.forEach(k=>{
+          const seg = document.createElement("div");
+          seg.className = "seg " + (k==="Bible Reading"?"read":k==="Morning Intimacy"?"intimacy":"memory");
+          if (d && dayMap[d] && Number(dayMap[d][k])>=1) seg.classList.add("on");
+          cell.appendChild(seg);
+        });
+        if (d){
+          const vals = dayMap[d] || {"Bible Reading":0,"Morning Intimacy":0,"Scripture Memorization":0};
+          cell.title = `${d}\nReading: ${vals["Bible Reading"]? "✓":"–"} • Intimacy: ${vals["Morning Intimacy"]? "✓":"–"} • Memorization: ${vals["Scripture Memorization"]? "✓":"–"}`;
+        } else {
+          cell.style.opacity = .35; // padded empty cells
+        }
+        row.appendChild(cell);
+      }
+      heat.appendChild(row);
+    }
 
     /* ===== Word Cloud from comment_general + comment_other ===== */
     const STOP = new Set(("the a an and or to of in for with on at is are am be this that it as i we you they he she was were have has had from by not n/a na week weeks day days because due just really very i’m im ive i've").split(" "));

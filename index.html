@@ -69,42 +69,42 @@
   .day-header{text-align:center;font-size:11px;font-weight:600;color:var(--muted);padding:3px 0}
   .heat-grid{display:grid;grid-template-columns:repeat(7,1fr);gap:3px}
   .day-cell{
-    aspect-ratio:.75; min-height:150px; max-height:174px; /* back to 3x original size */
-    background:#ffffff;border-radius:6px;padding:15px;
-    display:grid;grid-template-rows:repeat(3,1fr);gap:12px;
+    aspect-ratio:.75; min-height:105px; max-height:122px; /* reduced by 30% */
+    background:#ffffff;border-radius:6px;padding:10px;
+    display:grid;grid-template-rows:repeat(3,1fr);gap:8px;
     border:1px solid #e5e7eb;position:relative;transition:all .2s ease
   }
   .day-cell:hover{transform:translateY(-1px);box-shadow:0 4px 12px rgba(0,0,0,.1)}
   .day-cell.empty{background:#f9fafb;border:1px solid #f3f4f6}
-  .practice-bar{border-radius:8px;background:var(--empty);display:flex;align-items:center;justify-content:center;position:relative;transition:all .2s ease;min-height:42px}
-  .practice-bar .practice-label{font-size:16px;font-weight:800;color:#6b7280;line-height:1}
+  .practice-bar{border-radius:6px;background:var(--empty);display:flex;align-items:center;justify-content:center;position:relative;transition:all .2s ease;min-height:29px}
+  .practice-bar .practice-label{font-size:11px;font-weight:800;color:#6b7280;line-height:1}
 
   /* Mobile responsive heatmap */
   @media (max-width:768px){
     .day-cell{
-      min-height:80px; max-height:92px; /* smaller on tablets */
-      padding:8px; gap:6px;
+      min-height:56px; max-height:64px; /* smaller on tablets */
+      padding:6px; gap:4px;
     }
-    .practice-bar{min-height:22px; border-radius:4px}
-    .practice-bar .practice-label{font-size:10px}
+    .practice-bar{min-height:15px; border-radius:3px}
+    .practice-bar .practice-label{font-size:7px}
     .day-number{width:10px;height:10px;font-size:6px;top:-2px;right:-2px}
   }
   
   @media (max-width:480px){
     .day-cell{
-      min-height:50px; max-height:58px; /* much smaller on phones */
-      padding:4px; gap:3px;
+      min-height:35px; max-height:41px; /* much smaller on phones */
+      padding:3px; gap:2px;
     }
-    .practice-bar{min-height:14px; border-radius:3px}
-    .practice-bar .practice-label{font-size:8px}
-    .day-number{width:9px;height:9px;font-size:5px}
-    .heatmap-container{padding:8px}
-    .heat-grid{gap:2px}
-    .day-headers{gap:2px;margin-bottom:4px}
-    .legend{margin-top:6px;gap:8px}
-    .chip{padding:3px 6px}
-    .chip-label{font-size:10px}
-    .color-swatch{width:12px;height:12px}
+    .practice-bar{min-height:10px; border-radius:2px}
+    .practice-bar .practice-label{font-size:6px}
+    .day-number{width:8px;height:8px;font-size:5px}
+    .heatmap-container{padding:6px}
+    .heat-grid{gap:1px}
+    .day-headers{gap:1px;margin-bottom:3px}
+    .legend{margin-top:4px;gap:6px}
+    .chip{padding:2px 4px}
+    .chip-label{font-size:9px}
+    .color-swatch{width:10px;height:10px}
   }
   .practice-bar.completed .practice-label{color:#ffffff}
   .practice-bar.read.completed{background:var(--read)}

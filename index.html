@@ -23,9 +23,7 @@
   .wrap{padding:0 24px 40px;max-width:1400px;margin:0 auto}
 
   /* KPI cards */
-  .kpis{
-    display:grid; gap:18px; grid-template-columns:repeat(5, 1fr); margin-bottom:24px;
-  }
+  .kpis{display:grid; gap:18px; grid-template-columns:repeat(5, 1fr); margin-bottom:24px;}
   @media (max-width:1200px){
     .kpis{grid-template-columns:repeat(3, 1fr)}
     .kpis .card:nth-child(4), .kpis .card:nth-child(5){ grid-column:span 1; }
@@ -37,8 +35,9 @@
   @media (max-width:480px){ .kpis{grid-template-columns:1fr} }
 
   .grid{display:grid;gap:18px}
-  /* Make Practice Balance a little wider */
+  /* Practice Balance a bit wider */
   .mid{grid-template-columns:1.4fr 1.8fr}
+  /* Heatmap spans bottom */
   .bottom{grid-template-columns:1fr}
   @media (max-width:980px){.mid,.bottom{grid-template-columns:1fr}}
 
@@ -70,7 +69,7 @@
   .day-header{text-align:center;font-size:11px;font-weight:600;color:var(--muted);padding:4px 0}
   .heat-grid{display:grid;grid-template-columns:repeat(7,1fr);gap:3px}
   .day-cell{
-    aspect-ratio:.7;min-height:28px; /* reduced height */
+    aspect-ratio:.7; min-height:28px; /* shorter than squares */
     background:#ffffff;border-radius:6px;padding:3px;
     display:grid;grid-template-rows:repeat(3,1fr);gap:2px;
     border:1px solid #e5e7eb;position:relative;transition:all .2s ease
@@ -83,6 +82,7 @@
   .practice-bar.read.completed{background:var(--read)}
   .practice-bar.intimacy.completed{background:var(--intimacy)}
   .practice-bar.memory.completed{background:var(--memory)}
+  /* partial */
   .practice-bar.partial .practice-label{color:#ffffff}
   .practice-bar.read.partial{background:linear-gradient(90deg,var(--read) 0 50%, var(--empty) 50% 100%)}
   .practice-bar.intimacy.partial{background:linear-gradient(90deg,var(--intimacy) 0 50%, var(--empty) 50% 100%)}
@@ -110,21 +110,25 @@
       <div id="attnFlag" class="pill">—</div>
       <div class="sub">Completed so far ÷ possible so far. Target ≥ 95% to succeed by Day 90.</div>
     </div>
+
     <div class="card">
       <h3>On-Track vs Expected</h3>
       <div id="ontrack" class="big">—</div>
       <div id="ontrackHelp" class="sub">Ahead/behind the 95% pace based on how many units should be done by today.</div>
     </div>
+
     <div class="card">
       <h3>Days Passed / Left</h3>
       <div id="days" class="big">—</div>
       <div id="period" class="sub"></div>
     </div>
+
     <div class="card">
       <h3>Weakest Area</h3>
       <div id="weak" class="big">—</div>
       <div class="sub">Per-practice attainment (completed ÷ possible) so far.</div>
     </div>
+
     <div class="card">
       <h3>Strongest Area</h3>
       <div id="strong" class="big">—</div>
@@ -138,7 +142,7 @@
     <div class="card"><h2>Practice Balance (Radar)</h2><canvas id="radar"></canvas><div id="projection" class="sub" style="margin-top:8px"></div></div>
   </div>
 
-  <!-- BOTTOM -->
+  <!-- BOTTOM (heatmap spans full width) -->
   <div class="grid bottom section" style="margin-top:18px;">
     <div class="card">
       <h2>Daily Consistency Heatmap (last 6 weeks)</h2>
@@ -160,7 +164,280 @@
 </div>
 
 <script>
-/* keep your same JS logic — unchanged */
+  /* ======= CONFIG ======= */
+  const FACT_CSV_URL =
+    "https://docs.google.com/spreadsheets/d/e/2PACX-1vQERkbRqvUyktHeUw-DvLVNNIzvR50N0oHC-bpDwx6Lj33-o9uIiGN-ucd9r80Tq3l5_WroECTpI-gz/pub?gid=262595972&single=true&output=csv";
+  const TARGET = 0.95;
+  const DAILY_PRACTICES = new Set(["Bible Reading","Morning Intimacy","Scripture Memorization"]);
+  const DAILY_COLORS = {
+    "Bible Reading":"read",
+    "Morning Intimacy":"intimacy",
+    "Scripture Memorization":"memory"
+  };
+  const LETTER = {"Bible Reading":"R","Morning Intimacy":"I","Scripture Memorization":"M"};
+
+  /* ======= HELPERS ======= */
+  const pid = (new URLSearchParams(location.search).get("id") || "").trim().toLowerCase();
+  document.getElementById("who").textContent = pid || "(add ?id=email)";
+
+  function csvToRows(text){
+    const lines = text.trim().split(/\r?\n/);
+    const header = lines.shift().split(",");
+    return lines.map(line=>{
+      const cols = line.split(/,(?=(?:[^"]*"[^"]*")*[^"]*$)/).map(s=>s.replace(/^"|"$/g,""));
+      const o={}; header.forEach((h,i)=>o[h.trim()]= (cols[i]||"").trim());
+      return o;
+    });
+  }
+  function ymd(d){ return d.toISOString().slice(0,10); }
+  function sod(d){ const x=new Date(d); x.setHours(0,0,0,0); return x; }
+  function pd(s){ const d=new Date(s); return isNaN(d)?null:d; }
+  function pct(x){ return (Math.round(x*1000)/10).toFixed(1)+"%"; }
+  function fetchCSV(url){ return fetch(url+(url.includes("?")?"&":"?")+"cb="+Date.now()).then(r=>r.text()).then(csvToRows); }
+  function getRowPid(row){
+    const cands = ["participant_id","Email Address","email address","Email","email"];
+    for (const want of cands){
+      const found = Object.keys(row).find(h => h.toLowerCase()===want.toLowerCase());
+      if (found && row[found]) return String(row[found]).trim().toLowerCase();
+    }
+    return "";
+  }
+
+  (async function main(){
+    if(!pid) return;
+
+    const factAll = await fetchCSV(FACT_CSV_URL);
+    const fact = factAll.filter(r => getRowPid(r)===pid);
+
+    if (!fact.length){
+      document.body.insertAdjacentHTML("beforeend","<div class='wrap'><p>No data yet for this participant.</p></div>");
+      return;
+    }
+
+    // Program timing
+    const weekStarts = fact.map(r=>pd(r.week_start)).filter(Boolean).sort((a,b)=>a-b);
+    const programStart = sod(weekStarts[0]);
+    const today = sod(new Date());
+    const dayNum = Math.max(1, Math.min(90, Math.floor((today - programStart)/(1000*60*60*24))+1));
+    const daysLeft = Math.max(0, 90 - dayNum);
+    const totalWeeksFinal = 13; // ceil(90/7)
+
+    // Aggregations (partials included)
+    let completed=0, possible=0;
+    const byPractice={}, byWeek={}, byWeekPractice={}; // week -> practice -> {done,total}
+    const dayMap = {}; // date -> { three dailies }
+
+    fact.forEach(r=>{
+      const val = Number(r.value || 0);  // can be 0, 0.5, 1, etc.
+      possible += 1;
+      completed += val;
+
+      const prac = r.practice;
+      byPractice[prac] = byPractice[prac] || {done:0,total:0};
+      byPractice[prac].done += val; byPractice[prac].total += 1;
+
+      const wk = r.week_start;
+      byWeek[wk] = byWeek[wk] || {done:0,total:0};
+      byWeek[wk].done += val; byWeek[wk].total += 1;
+
+      byWeekPractice[wk] = byWeekPractice[wk] || {};
+      byWeekPractice[wk][prac] = byWeekPractice[wk][prac] || {done:0,total:0};
+      byWeekPractice[wk][prac].done += val;
+      byWeekPractice[wk][prac].total += 1;
+
+      if (DAILY_PRACTICES.has(prac)) {
+        const d = r.date;
+        if (!dayMap[d]) dayMap[d] = {"Bible Reading":0,"Morning Intimacy":0,"Scripture Memorization":0};
+        // store fractional value (cap at 1 for visuals)
+        dayMap[d][prac] = Math.max(0, Math.min(1, val));
+      }
+    });
+
+    // KPIs
+    const attainment = possible ? (completed/possible) : 0;
+    const weeksElapsed = Math.max(1, Math.ceil(dayNum/7));
+    const expectedPossible = (dayNum*3) + (weeksElapsed*4);  // 3 daily + 4 weekly categories
+    const expectedCompletedFor95 = expectedPossible * 0.95;
+    const variance = Math.round((completed - expectedCompletedFor95)*10)/10;
+
+    // Projections
+    const totalPossible = (90*3) + (totalWeeksFinal*4);
+    const projectedFinalCompleted = completed + attainment*(totalPossible - possible);
+    const projectedFinalPct = projectedFinalCompleted / totalPossible;
+    const targetFinalCompleted = 0.95 * totalPossible;
+    const shortfall = Math.max(0, targetFinalCompleted - projectedFinalCompleted);
+    const weeksLeft = Math.max(0, totalWeeksFinal - weeksElapsed);
+    const neededPerWeek = weeksLeft ? (shortfall / weeksLeft) : shortfall;
+
+    // Weakest & Strongest areas
+    let weakest=null, weakestPct=1, strongest=null, strongestPct=-1;
+    Object.keys(byPractice).forEach(k=>{
+      const p = byPractice[k]; const ratio = p.total ? p.done/p.total : 0;
+      if (ratio < weakestPct){ weakest=k; weakestPct=ratio; }
+      if (ratio > strongestPct){ strongest=k; strongestPct=ratio; }
+    });
+
+    // KPI fill
+    document.getElementById("attainment").textContent = pct(attainment);
+    const flag = document.getElementById("attnFlag");
+    flag.className = "pill " + (attainment>=0.95 ? "ok" : attainment>=0.8 ? "warn" : "bad");
+    flag.textContent = attainment>=0.95 ? "On track (≥95%)" : "At risk (<95%)";
+    document.getElementById("ontrack").textContent = (variance>=0?"+":"")+variance;
+    document.getElementById("ontrackHelp").textContent =
+      `By day ${dayNum}, ~${Math.round(expectedCompletedFor95)} completed units is 95% pace. You've completed ${Math.round(completed)}, so you're ${variance>=0?Math.abs(variance)+" ahead":Math.abs(variance)+" behind"}.`;
+    document.getElementById("days").textContent = `Day ${dayNum} / 90`;
+    document.getElementById("period").textContent = `${daysLeft} days remaining`;
+    document.getElementById("weak").textContent = weakest ? `${weakest} (${pct(weakestPct)})` : "—";
+    document.getElementById("strong").textContent = strongest ? `${strongest} (${pct(strongestPct)})` : "—";
+
+    // Weekly line chart
+    const wLabels = Object.keys(byWeek).sort();
+    const wPct = wLabels.map(w => {
+      const a = byWeek[w]; return a.total ? Math.round(1000*(a.done/a.total))/10 : 0;
+    });
+    new Chart(document.getElementById("trend"), {
+      type:"line",
+      data:{ labels:wLabels, datasets:[{ label:"Weekly Attainment %", data:wPct, borderWidth:3, tension:.25 }] },
+      options:{ responsive:true, scales:{ y:{ suggestedMin:0, suggestedMax:100 } } }
+    });
+
+    // Radar chart
+    const pLabels = Object.keys(byPractice);
+    const pPct = pLabels.map(k => byPractice[k].done/byPractice[k].total*100);
+    new Chart(document.getElementById("radar"), {
+      type:"radar",
+      data:{ labels:pLabels, datasets:[{ label:"% Attainment by Practice", data:pPct, borderWidth:2, pointRadius:3 }] },
+      options:{ responsive:true, scales:{ r:{ suggestedMin:0, suggestedMax:100 } } }
+    });
+    document.getElementById("projection").textContent =
+      `Projected finish at ${pct(projectedFinalPct)}. ` +
+      (shortfall>0 ? `To hit 95%, aim for ~${Math.ceil(neededPerWeek)} extra unit(s) per week for the remaining ${weeksLeft} week(s).`
+                    : `You're on track for 95%+ 🎉`);
+
+    /* ===== Heatmap (with partials) ===== */
+    const heat = document.getElementById("heat");
+    heat.innerHTML = "";
+    const endDate = new Date();
+    const startDate = new Date(endDate);
+    startDate.setDate(endDate.getDate() - 41); // 42 days
+    const calendarStart = new Date(startDate);
+    calendarStart.setDate(startDate.getDate() - startDate.getDay());
+    const totalDays = Math.ceil(42 / 7) * 7;
+
+    for (let i = 0; i < totalDays; i++) {
+      const currentDate = new Date(calendarStart);
+      currentDate.setDate(calendarStart.getDate() + i);
+      const dateStr = ymd(currentDate);
+      const dayOfMonth = currentDate.getDate();
+      const isInRange = currentDate >= startDate && currentDate <= endDate;
+
+      const dayCell = document.createElement("div");
+      dayCell.className = isInRange ? "day-cell" : "day-cell empty";
+
+      if (isInRange) {
+        const vals = dayMap[dateStr] || {"Bible Reading":0,"Morning Intimacy":0,"Scripture Memorization":0};
+        const badge = document.createElement("div");
+        badge.className = "day-number";
+        badge.textContent = dayOfMonth;
+        dayCell.appendChild(badge);
+
+        ["Bible Reading","Morning Intimacy","Scripture Memorization"].forEach(practice => {
+          const v = Number(vals[practice]) || 0;
+          const bar = document.createElement("div");
+          const colorClass = DAILY_COLORS[practice];
+          let stateClass = "";
+          if (v >= 1) stateClass = "completed";
+          else if (v > 0) stateClass = "partial";
+
+          bar.className = `practice-bar ${colorClass} ${stateClass}`;
+          const label = document.createElement("span");
+          label.className = "practice-label";
+          // ✓ for done, ½ for partial, show initial when 0
+          label.textContent = v>=1 ? "✓" : (v>0 ? "½" : LETTER[practice].slice(0,1));
+          if (v===0) label.style.color = "#9ca3af";
+          bar.appendChild(label);
+          dayCell.appendChild(bar);
+        });
+
+        const sym = (v)=> v>=1 ? "✓" : (v>0 ? "½" : "–");
+        dayCell.title =
+          `${dateStr}\n`+
+          `Reading: ${sym(vals["Bible Reading"])} • Intimacy: ${sym(vals["Morning Intimacy"])} • Memorization: ${sym(vals["Scripture Memorization"])}`;
+      }
+      heat.appendChild(dayCell);
+    }
+
+    /* ===== Optional metrics (safe if missing in DOM) ===== */
+    function avg(arr){ if(!arr.length) return 0; return arr.reduce((a,b)=>a+b,0)/arr.length; }
+    const first3 = wPct.slice(0,3);
+    const recent3 = wPct.slice(-3);
+    const accelDelta = (avg(recent3) - avg(first3)); // pct points
+    const accelEl = document.getElementById("accel");
+    const accelText = document.getElementById("accelText");
+    if (accelEl && accelText){
+      accelText.textContent = `Acceleration Score: ${accelDelta>=0?"+":""}${accelDelta.toFixed(1)} pts (recent 3w vs first 3w)`;
+      accelEl.classList.remove("ok","warn","bad");
+      accelEl.classList.add(accelDelta>+1 ? "ok" : (accelDelta<-1 ? "bad" : "warn"));
+    }
+
+    const weeksSorted = Object.keys(byWeekPractice).sort();
+    const practices = Object.keys(byPractice);
+    function weeklyPctByPractice(practice){
+      return weeksSorted.map(w=>{
+        const rec = (byWeekPractice[w] && byWeekPractice[w][practice]) || {done:0,total:0};
+        return rec.total ? (rec.done/rec.total*100) : 0;
+      });
+    }
+
+    const velocityGrid = document.getElementById("velocityGrid");
+    if (velocityGrid){
+      velocityGrid.innerHTML = "";
+      practices.forEach(pr=>{
+        const series = weeklyPctByPractice(pr);
+        const f3 = series.slice(0,3);
+        const r3 = series.slice(-3);
+        const delta = avg(r3) - avg(f3);
+
+        const row = document.createElement("div");
+        row.className = "vrow";
+        const name = document.createElement("div");
+        name.className = "vname"; name.textContent = pr;
+        const deltaEl = document.createElement("div");
+        const trendClass = delta>+1 ? "up" : (delta<-1 ? "down" : "flat");
+        const arrow = delta>+1 ? "↗" : (delta<-1 ? "↘" : "→");
+        deltaEl.className = `vdelta ${trendClass}`;
+        deltaEl.textContent = `${arrow} ${delta>=0?"+":""}${delta.toFixed(1)} pts`;
+        row.appendChild(name); row.appendChild(deltaEl);
+        velocityGrid.appendChild(row);
+      });
+    }
+
+    const traj = document.getElementById("trajectoryHint");
+    if (traj) traj.textContent = `Trajectory Projection: finish at ${pct(projectedFinalPct)} vs goal 95%.`;
+
+    // Consistency Momentum
+    function ymdRange(start, end){
+      const arr=[]; const d=new Date(start);
+      while(d<=end){ arr.push(ymd(d)); d.setDate(d.getDate()+1); }
+      return arr;
+    }
+    const dates = ymdRange(new Date(programStart), today);
+    let streak=0, i=dates.length-1;
+    while(i>=0){
+      const vals = dayMap[dates[i]] || {"Bible Reading":0,"Morning Intimacy":0,"Scripture Memorization":0};
+      const count = (vals["Bible Reading"]>=1?1:0)+(vals["Morning Intimacy"]>=1?1:0)+(vals["Scripture Memorization"]>=1?1:0);
+      if (count>=2){ streak++; i--; } else break;
+    }
+    const gains = [];
+    for(let j=1;j<wPct.length;j++){ gains.push(wPct[j]-wPct[j-1]); }
+    const last3Gains = gains.slice(-3).filter(g=>g>0);
+    const bounce = last3Gains.length? (avg(last3Gains)).toFixed(1) : "0.0";
+    const consistencyHint = document.getElementById("consistencyHint");
+    if (consistencyHint){
+      consistencyHint.textContent =
+        `Consistency Momentum: current streak ${streak} day(s) (≥2/3 dailies). Recent bounce-back speed ~ +${bounce} pts/week.`;
+    }
+  })();
 </script>
 </body>
 </html>

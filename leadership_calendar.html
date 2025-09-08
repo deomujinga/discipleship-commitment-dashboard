@@ -18,7 +18,7 @@
   .wrap{padding:0 24px 40px;max-width:1200px;margin:0 auto}
   .card{background:var(--card);border-radius:var(--radius);box-shadow:var(--shadow);padding:16px 16px 18px}
 
-  /* Leaderboard (no search; paginated) */
+  /* Leaderboard (paginated, no search) */
   .leaderbar{display:flex;justify-content:space-between;align-items:center;margin-bottom:10px;gap:10px;flex-wrap:wrap}
   .leadergrid{display:grid;grid-template-columns:1fr;gap:10px}
   .row{
@@ -33,7 +33,7 @@
   .meta{font-size:12px;color:var(--muted)}
   .bar{height:8px;border-radius:999px;background:#f1f5f9;overflow:hidden}
   .fill{height:100%;background:linear-gradient(90deg,#a5b4fc,#4f46e5)}
-  .right{ text-align:right }
+  .right{text-align:right}
   .pct{font-weight:800}
   .ratio{font-size:12px;color:#6b7280}
   .badge{font-size:11px;border-radius:999px;border:1px solid #e5e7eb;padding:2px 8px;color:#374151;background:#fff;display:inline-block;margin-top:4px}
@@ -48,8 +48,10 @@
 
   /* Calendar */
   .calendar{margin-top:16px}
-  .monthbar{display:flex;justify-content:space-between;align-items:center;margin-bottom:10px}
+  .monthbar{display:flex;justify-content:space-between;align-items:center;margin-bottom:10px;gap:10px;flex-wrap:wrap}
   .monthbar h2{margin:0;font-size:18px}
+  .monthpager{display:flex;gap:8px;align-items:center}
+  .monthpager button{border:1px solid #e5e7eb;border-radius:10px;padding:6px 10px;background:#fff;cursor:pointer}
   .legend{display:flex;align-items:center;gap:10px;flex-wrap:wrap}
   .swatch{width:22px;height:12px;border-radius:4px;border:1px solid #e5e7eb}
   .grad{display:flex;gap:4px;align-items:center}
@@ -108,10 +110,14 @@
     <div id="leaderGrid" class="leadergrid"></div>
   </div>
 
-  <!-- CALENDAR -->
+  <!-- CALENDAR (ONE MONTH WITH PAGINATION) -->
   <div class="card calendar">
     <div class="monthbar">
-      <h2 id="rangeLabel">—</h2>
+      <div class="monthpager">
+        <button id="calPrev">◀ Prev Month</button>
+        <h2 id="rangeLabel" style="min-width:200px;text-align:center">—</h2>
+        <button id="calNext">Next Month ▶</button>
+      </div>
       <div class="legend">
         <span>0%</span>
         <div class="grad">
@@ -155,7 +161,7 @@ const FACT_CSV_URL =
   "https://docs.google.com/spreadsheets/d/e/2PACX-1vQERkbRqvUyktHeUw-DvLVNNIzvR50N0oHC-bpDwx6Lj33-o9uIiGN-ucd9r80Tq3l5_WroECTpI-gz/pub?gid=262595972&single=true&output=csv";
 const DAILY = new Set(["Bible Reading","Morning Intimacy","Scripture Memorization"]);
 const COLORS = ["var(--g0)","var(--g1)","var(--g2)","var(--g3)","var(--g4)","var(--g5)"];
-const TARGET = 0.94; // 94% threshold for success
+const TARGET = 0.94; // success threshold
 
 /* ========= HELPERS ========= */
 function csvToRows(text){
@@ -181,11 +187,12 @@ function initials(nameOrEmail){
   return (parts[0][0]+parts[parts.length-1][0]).toUpperCase();
 }
 
-/* ========= DATA STATE ========= */
+/* ========= DATA ========= */
 let RAW=[], aggByDay={}, board=[];
 let page=1, pageSize=4;
+let monthOffset=0; // 0 = current month, -1 = previous, +1 = next (if you want to look ahead)
 
-/* ========= LOAD & AGGREGATE ========= */
+/* ========= LOAD ========= */
 async function load(){
   const text = await fetch(FACT_CSV_URL + (FACT_CSV_URL.includes("?")?"&":"?") + "cb=" + Date.now()).then(r=>r.text());
   RAW = csvToRows(text);
@@ -201,26 +208,19 @@ async function load(){
     return "";
   };
 
-  // Leaderboard totals: all practices, partials included
-  const totals = {}; // pid -> {done,total,name}
+  // Leaderboard totals
+  const totals = {};
   RAW.forEach(r=>{
     const pid = getPid(r); if(!pid) return;
     const val = Number(r.value||0);
     totals[pid] = totals[pid] || {done:0,total:0,name:getName(r)||pid};
     totals[pid].done += val; totals[pid].total += 1;
-    if(!totals[pid].name) totals[pid].name = getName(r)||pid;
   });
-
-  board = Object.entries(totals).map(([pid,t])=>{
-    const pct = t.total ? (t.done/t.total) : 0;
-    return {pid, name:t.name, done:t.done, total:t.total, pct};
-  });
-
-  // Sort by % desc
+  board = Object.entries(totals).map(([pid,t])=>({pid,name:t.name,done:t.done,total:t.total,pct:t.total?(t.done/t.total):0}));
   board.sort((a,b)=> b.pct - a.pct);
 
-  // Calendar aggregation from dailies
-  const seen = new Map(); // pid|date|practice -> max value for that day
+  // Calendar aggregation (dailies)
+  const seen = new Map(); // pid|date|practice -> value
   for(const r of RAW){
     if(!DAILY.has(r.practice)) continue;
     const pid = getPid(r); if(!pid) continue;
@@ -229,27 +229,21 @@ async function load(){
     const val = clamp01(r.value);
     seen.set(key, Math.max(val, seen.get(key)||0));
   }
-
-  const byDayPrac = {}; // date -> practice -> {sum,count}
-  const participantsPerDay = {};
+  const byDayPrac = {}, participantsPerDay = {};
   for(const [k,v] of seen.entries()){
     const [pid,date,prac] = k.split("|");
     byDayPrac[date] = byDayPrac[date] || {};
     byDayPrac[date][prac] = byDayPrac[date][prac] || {sum:0,count:0};
-    byDayPrac[date][prac].sum += v;
-    byDayPrac[date][prac].count += 1;
-
-    participantsPerDay[date] = participantsPerDay[date] || new Set();
-    participantsPerDay[date].add(pid);
+    byDayPrac[date][prac].sum += v; byDayPrac[date][prac].count += 1;
+    participantsPerDay[date] = participantsPerDay[date] || new Set(); participantsPerDay[date].add(pid);
   }
-
   aggByDay = {};
-  const P = ["Bible Reading","Morning Intimacy","Scripture Memorization"];
+  const P=["Bible Reading","Morning Intimacy","Scripture Memorization"];
   Object.keys(byDayPrac).forEach(date=>{
     const rec = {nParticipants: participantsPerDay[date]?.size || 0, R:0,I:0,M:0, overall:0};
-    const r = byDayPrac[date]["Bible Reading"];    rec.R = r ? (r.sum / r.count) : 0;
-    const i = byDayPrac[date]["Morning Intimacy"]; rec.I = i ? (i.sum / i.count) : 0;
-    const m = byDayPrac[date]["Scripture Memorization"]; rec.M = m ? (m.sum / m.count) : 0;
+    const r=byDayPrac[date]["Bible Reading"];    rec.R = r ? (r.sum/r.count) : 0;
+    const i=byDayPrac[date]["Morning Intimacy"]; rec.I = i ? (i.sum/i.count) : 0;
+    const m=byDayPrac[date]["Scripture Memorization"]; rec.M = m ? (m.sum/m.count) : 0;
     const present = P.map(p=>byDayPrac[date][p]?1:0);
     const denom = present.reduce((a,b)=>a+b,0) || 3;
     rec.overall = (rec.R + rec.I + rec.M) / denom;
@@ -259,17 +253,16 @@ async function load(){
   renderSummary();
 }
 
-/* ========= RENDER SUMMARY (likelihood to hit 94%) ========= */
+/* ========= SUMMARY (≥94% pace) ========= */
 function renderSummary(){
   const total = board.length;
-  const likely = board.filter(b => b.pct >= TARGET).length; // projection = current pace
+  const likely = board.filter(b => b.pct >= TARGET).length;
   const pctLikely = total ? Math.round((likely/total)*1000)/10 : 0;
-  const el = document.getElementById("succSummary");
-  el.textContent = `Likelihood of Successful Completion (≥${Math.round(TARGET*100)}% pace): `
-                 + `${likely} / ${total} participants (${pctLikely}%).`;
+  document.getElementById("succSummary").textContent =
+    `Likelihood of Successful Completion (≥${Math.round(TARGET*100)}% pace): ${likely} / ${total} participants (${pctLikely}%).`;
 }
 
-/* ========= RENDER: LEADERBOARD (PAGINATED) ========= */
+/* ========= LEADERBOARD (pagination) ========= */
 const leaderGrid = document.getElementById("leaderGrid");
 const pageInfo = document.getElementById("pageInfo");
 const prevBtn = document.getElementById("prevBtn");
@@ -282,16 +275,14 @@ function badgeClass(p){
   return "badge bad";
 }
 function renderLeaderboard(){
-  pageSize = Number(pageSizeSel.value||4);
+  const size = Number(pageSizeSel.value||4);
+  pageSize = size;
   const pages = Math.max(1, Math.ceil(board.length / pageSize));
   page = Math.max(1, Math.min(page, pages));
   pageInfo.textContent = `Page ${page} / ${pages}`;
-  prevBtn.disabled = page<=1;
-  nextBtn.disabled = page>=pages;
+  prevBtn.disabled = page<=1; nextBtn.disabled = page>=pages;
 
-  const start = (page-1)*pageSize;
-  const items = board.slice(start, start+pageSize);
-
+  const items = board.slice((page-1)*pageSize, (page-1)*pageSize + pageSize);
   leaderGrid.innerHTML = "";
   items.forEach(b=>{
     const pctNum = Math.round(b.pct*1000)/10;
@@ -323,24 +314,27 @@ prevBtn.addEventListener("click", ()=>{ page--; renderLeaderboard(); });
 nextBtn.addEventListener("click", ()=>{ page++; renderLeaderboard(); });
 pageSizeSel.addEventListener("change", ()=>{ page=1; renderLeaderboard(); });
 
-/* ========= RENDER: CALENDAR ========= */
-const calGrid = document.getElementById("calGrid");
-const rangeLabel = document.getElementById("rangeLabel");
+/* ========= CALENDAR (one month, month-to-month pager) ========= */
+const calGrid   = document.getElementById("calGrid");
+const rangeLabel= document.getElementById("rangeLabel");
+const calPrev   = document.getElementById("calPrev");
+const calNext   = document.getElementById("calNext");
 
-function titleMonthRange(start, months){
-  const a=new Date(start), b=new Date(start); b.setMonth(b.getMonth()+months-1);
-  const fmt = (d)=> d.toLocaleString(undefined,{month:"long", year:"numeric"});
-  return months===1 ? fmt(a) : `${fmt(a)} – ${fmt(b)}`;
-}
+function monthTitle(y,m){ return new Date(y,m,1).toLocaleString(undefined,{month:"long",year:"numeric"}); }
+
 function renderCalendar(){
-  const months = 2; // keep simple; adjust if you want a control again
-  const now = new Date();
-  const start = new Date(now.getFullYear(), now.getMonth() - (months-1), 1);
-  const startGrid = new Date(start); startGrid.setDate(1 - start.getDay());
-  const end = new Date(now.getFullYear(), now.getMonth()+1, 0);
-  const endGrid = new Date(end); endGrid.setDate(end.getDate() + (6 - end.getDay()));
+  // Base month = current month + offset
+  const base = new Date();
+  const year = base.getFullYear();
+  const monthIndex = base.getMonth() + monthOffset;
 
-  rangeLabel.textContent = titleMonthRange(start, months);
+  // Normalize year/month from offset
+  const start = new Date(year, monthIndex, 1);               // first day of target month
+  const end   = new Date(year, monthIndex + 1, 0);           // last day of target month
+  const startGrid = new Date(start); startGrid.setDate(1 - start.getDay());     // back to Sunday
+  const endGrid   = new Date(end);   endGrid.setDate(end.getDate() + (6 - end.getDay())); // forward to Saturday
+
+  rangeLabel.textContent = monthTitle(start.getFullYear(), start.getMonth());
 
   calGrid.innerHTML = "";
   for (let d = new Date(startGrid); d <= endGrid; d.setDate(d.getDate()+1)){
@@ -391,6 +385,8 @@ function renderCalendar(){
     calGrid.appendChild(cell);
   }
 }
+calPrev.addEventListener("click", ()=>{ monthOffset -= 1; renderCalendar(); });
+calNext.addEventListener("click", ()=>{ monthOffset += 1; renderCalendar(); });
 
 /* ========= BOOT ========= */
 (async function(){

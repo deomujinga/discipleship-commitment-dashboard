@@ -1,0 +1,300 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>Leadership Calendar — Discipleship Program (Aggregated)</title>
+<style>
+  :root{
+    --bg:#f7f9fc; --card:#ffffff; --ink:#111827; --muted:#6b7280; --shadow:0 8px 24px rgba(0,0,0,.06);
+    --radius:16px; --read:#3b82f6; --intimacy:#06b6d4; --memory:#7c3aed;
+    --g0:#eef2ff; --g1:#c7d2fe; --g2:#93c5fd; --g3:#60a5fa; --g4:#3b82f6; --g5:#1d4ed8; /* default gradient */
+  }
+  *{box-sizing:border-box}
+  body{margin:0;background:var(--bg);color:var(--ink);font-family:ui-sans-serif,system-ui,-apple-system,Segoe UI,Roboto,"Helvetica Neue",Arial}
+  header{padding:22px 24px 8px;display:flex;justify-content:space-between;align-items:end;gap:16px;flex-wrap:wrap}
+  header h1{margin:0;font-size:clamp(20px,3vw,28px)}
+  .wrap{padding:0 24px 40px;max-width:1200px;margin:0 auto}
+  .card{background:var(--card);border-radius:var(--radius);box-shadow:var(--shadow);padding:16px 16px 18px}
+  .controls{display:flex;gap:10px;flex-wrap:wrap;align-items:center}
+  select,button{border:1px solid #e5e7eb;border-radius:10px;padding:8px 10px;background:#fff;color:#111827}
+  button{cursor:pointer;font-weight:600}
+  .pill{font-size:12px;color:var(--muted)}
+  .legend{display:flex;align-items:center;gap:10px;flex-wrap:wrap}
+  .swatch{width:22px;height:12px;border-radius:4px;border:1px solid #e5e7eb}
+  .grad{display:flex;gap:4px;align-items:center}
+  .grad .swatch{width:16px}
+
+  /* Calendar */
+  .calendar{margin-top:14px}
+  .monthbar{display:flex;justify-content:space-between;align-items:center;margin-bottom:10px}
+  .monthbar h2{margin:0;font-size:18px}
+  .grid{display:grid;grid-template-columns:repeat(7,1fr);gap:6px}
+  .dow{font-size:11px;color:var(--muted);text-align:center;margin-bottom:6px}
+  .cell{
+    aspect-ratio:1; border-radius:10px; background:#f3f4f6; position:relative; overflow:hidden;
+    border:1px solid #e5e7eb; transition:transform .15s ease, box-shadow .15s ease;
+  }
+  .cell.in-month{background:#ffffff}
+  .cell:hover{transform:translateY(-2px);box-shadow:0 10px 22px rgba(0,0,0,.09)}
+  .date{position:absolute;top:6px;left:6px;font-size:11px;color:#6b7280;font-weight:600}
+  .fill{position:absolute;inset:0;opacity:.88}
+  .pct{position:absolute;right:6px;bottom:6px;font-size:12px;font-weight:800;color:#0b1020;text-shadow:0 1px 0 rgba(255,255,255,.6)}
+  .mini{position:absolute;left:6px;right:6px;bottom:24px;height:6px;display:grid;grid-template-columns:repeat(3,1fr);gap:3px}
+  .mini div{border-radius:2px;height:6px;opacity:.95}
+  .mini .r{background:var(--read)}
+  .mini .i{background:var(--intimacy)}
+  .mini .m{background:var(--memory)}
+  .foot{font-size:12px;color:var(--muted);margin-top:10px}
+
+  /* Modal (simple) */
+  dialog{border:none;border-radius:14px;box-shadow:0 24px 64px rgba(0,0,0,.25);padding:0;width:min(460px,92vw)}
+  dialog .dlg{padding:18px}
+  dialog h3{margin:0 0 10px}
+  dialog p{margin:8px 0}
+  dialog .kv{display:grid;grid-template-columns:1fr auto;gap:6px;font-size:14px}
+  dialog .kv div:last-child{font-weight:700}
+  dialog .close{position:absolute;top:8px;right:10px;background:#fff;border:1px solid #e5e7eb;border-radius:8px;padding:4px 8px;cursor:pointer}
+  @media (max-width:640px){ .cell{border-radius:8px} }
+</style>
+</head>
+<body>
+<header>
+  <h1>Leadership Calendar (Aggregated)</h1>
+  <div class="controls card" style="padding:10px 12px">
+    <div>
+      <label for="view">View:&nbsp;</label>
+      <select id="view">
+        <option value="overall">Overall (3 dailies)</option>
+        <option value="Bible Reading">Bible Reading</option>
+        <option value="Morning Intimacy">Morning Intimacy</option>
+        <option value="Scripture Memorization">Scripture Memorization</option>
+      </select>
+    </div>
+    <div>
+      <label for="months">Months:&nbsp;</label>
+      <select id="months">
+        <option value="1">Current month</option>
+        <option value="2" selected>Last 2 months</option>
+        <option value="3">Last 3 months</option>
+      </select>
+    </div>
+    <span class="pill">Shading = avg completion (partials included). Click a day for details.</span>
+  </div>
+</header>
+
+<div class="wrap">
+  <div class="card">
+    <div class="monthbar">
+      <h2 id="rangeLabel">—</h2>
+      <div class="legend">
+        <span>0%</span>
+        <div class="grad">
+          <div class="swatch" style="background:var(--g0)"></div>
+          <div class="swatch" style="background:var(--g1)"></div>
+          <div class="swatch" style="background:var(--g2)"></div>
+          <div class="swatch" style="background:var(--g3)"></div>
+          <div class="swatch" style="background:var(--g4)"></div>
+          <div class="swatch" style="background:var(--g5)"></div>
+        </div>
+        <span>100%</span>
+      </div>
+    </div>
+
+    <div class="grid" id="dowRow">
+      <div class="dow">S</div><div class="dow">M</div><div class="dow">T</div>
+      <div class="dow">W</div><div class="dow">T</div><div class="dow">F</div><div class="dow">S</div>
+    </div>
+    <div class="grid" id="calGrid" style="margin-top:6px"></div>
+    <div class="foot">Mini-bars show per-practice strength for that day (R = Reading, I = Intimacy, M = Memorization).</div>
+  </div>
+</div>
+
+<dialog id="detail">
+  <button class="close" onclick="detail.close()">Close</button>
+  <div class="dlg">
+    <h3 id="dlgDate">—</h3>
+    <div class="kv"><div>Participants counted</div><div id="dlgN">—</div></div>
+    <div class="kv"><div>Overall completion</div><div id="dlgOverall">—</div></div>
+    <hr style="margin:12px 0;border:none;border-top:1px solid #e5e7eb">
+    <div class="kv"><div>Bible Reading</div><div id="dlgR">—</div></div>
+    <div class="kv"><div>Morning Intimacy</div><div id="dlgI">—</div></div>
+    <div class="kv"><div>Scripture Memorization</div><div id="dlgM">—</div></div>
+  </div>
+</dialog>
+
+<script>
+/* ========= CONFIG ========= */
+const FACT_CSV_URL =
+  "https://docs.google.com/spreadsheets/d/e/2PACX-1vQERkbRqvUyktHeUw-DvLVNNIzvR50N0oHC-bpDwx6Lj33-o9uIiGN-ucd9r80Tq3l5_WroECTpI-gz/pub?gid=262595972&single=true&output=csv";
+const DAILY = new Set(["Bible Reading","Morning Intimacy","Scripture Memorization"]);
+const COLORS = ["var(--g0)","var(--g1)","var(--g2)","var(--g3)","var(--g4)","var(--g5)"];
+
+/* ========= HELPERS ========= */
+function csvToRows(text){
+  const lines = text.trim().split(/\r?\n/);
+  const header = lines.shift().split(",");
+  return lines.map(line=>{
+    const cols = line.split(/,(?=(?:[^"]*"[^"]*")*[^"]*$)/).map(s=>s.replace(/^"|"$/g,""));
+    const o={}; header.forEach((h,i)=>o[h.trim()]= (cols[i]||"").trim());
+    return o;
+  });
+}
+function ymd(d){ return d.toISOString().slice(0,10); }
+function parseDate(s){ const d=new Date(s); return isNaN(d)?null:d; }
+function clamp01(x){ return Math.max(0, Math.min(1, Number(x)||0)); }
+function pct(x){ return Math.round(x*1000)/10 + "%"; }
+function bucketColor(x){
+  // 0..1 -> 0..5
+  const b = Math.max(0, Math.min(5, Math.floor(x*6)));
+  return COLORS[b];
+}
+function titleMonthRange(start, months){
+  const a = new Date(start), b = new Date(start); b.setMonth(b.getMonth()+months-1);
+  const fmt = (d)=> d.toLocaleString(undefined,{month:"long", year:"numeric"});
+  return months===1 ? fmt(a) : `${fmt(a)} – ${fmt(b)}`;
+}
+
+/* ========= DATA LOAD & AGG ========= */
+let ALL = []; // raw rows
+let aggByDay = {}; // date -> { nParticipants: number, overall:0..1, R/I/M: 0..1 }
+
+async function load(){
+  const text = await fetch(FACT_CSV_URL + (FACT_CSV_URL.includes("?")?"&":"?") + "cb=" + Date.now()).then(r=>r.text());
+  ALL = csvToRows(text);
+
+  // Build participant/day/practice matrix
+  const seen = new Map(); // key: pid|date|practice -> value (0..1)
+  function getPid(row){
+    const cands = ["participant_id","Email Address","email","Email","email address"];
+    for (const k of cands){ if (row[k] && row[k].trim()) return row[k].trim().toLowerCase(); }
+    return "";
+  }
+  for (const r of ALL){
+    const prac = r.practice;
+    if (!DAILY.has(prac)) continue;
+    const pid = getPid(r); if (!pid) continue;
+    const date = r.date || r.Date || r.date_str || "";
+    const d = parseDate(date); if (!d) continue;
+    const key = `${pid}|${ymd(d)}|${prac}`;
+    if (!seen.has(key)) seen.set(key, clamp01(r.value));
+    else seen.set(key, Math.max(seen.get(key), clamp01(r.value))); // keep max per person/day/practice
+  }
+
+  // Aggregate per day across participants
+  const byDayPrac = {}; // date -> practice -> {sum,count}
+  const participantsPerDay = {}; // date -> Set
+  for (const [k,v] of seen.entries()){
+    const [, date, prac] = k.split("|");
+    byDayPrac[date] = byDayPrac[date] || {};
+    byDayPrac[date][prac] = byDayPrac[date][prac] || {sum:0,count:0};
+    byDayPrac[date][prac].sum += v;
+    byDayPrac[date][prac].count += 1;
+
+    participantsPerDay[date] = participantsPerDay[date] || new Set();
+    participantsPerDay[date].add(k.split("|")[0]);
+  }
+
+  aggByDay = {};
+  const P = ["Bible Reading","Morning Intimacy","Scripture Memorization"];
+  Object.keys(byDayPrac).forEach(date=>{
+    const rec = {nParticipants: participantsPerDay[date]?.size || 0, R:0,I:0,M:0, overall:0};
+    const r = byDayPrac[date]["Bible Reading"];   rec.R = r ? (r.sum / r.count) : 0;
+    const i = byDayPrac[date]["Morning Intimacy"];rec.I = i ? (i.sum / i.count) : 0;
+    const m = byDayPrac[date]["Scripture Memorization"]; rec.M = m ? (m.sum / m.count) : 0;
+
+    // Overall = average of per-practice averages (not weighted by submissions)
+    const present = P.map(p=>byDayPrac[date][p] ? 1 : 0);
+    const denom = present.reduce((a,b)=>a+b,0) || 3;
+    rec.overall = (rec.R + rec.I + rec.M) / denom;
+
+    aggByDay[date] = rec;
+  });
+}
+
+/* ========= RENDER ========= */
+const calGrid = document.getElementById("calGrid");
+const rangeLabel = document.getElementById("rangeLabel");
+const viewSel = document.getElementById("view");
+const monthsSel = document.getElementById("months");
+const detail = document.getElementById("detail");
+const dlgDate = document.getElementById("dlgDate");
+const dlgN = document.getElementById("dlgN");
+const dlgOverall = document.getElementById("dlgOverall");
+const dlgR = document.getElementById("dlgR");
+const dlgI = document.getElementById("dlgI");
+const dlgM = document.getElementById("dlgM");
+
+function render(){
+  const months = Number(monthsSel.value || 2);
+  const now = new Date();
+  const start = new Date(now.getFullYear(), now.getMonth() - (months-1), 1); // first day of earliest month
+  const startGrid = new Date(start); startGrid.setDate(1 - start.getDay()); // back to Sunday
+  const end = new Date(now.getFullYear(), now.getMonth()+1, 0); // last day of current month
+  const endGrid = new Date(end); endGrid.setDate(end.getDate() + (6 - end.getDay())); // forward to Saturday
+
+  rangeLabel.textContent = titleMonthRange(start, months);
+
+  calGrid.innerHTML = "";
+  for (let d = new Date(startGrid); d <= endGrid; d.setDate(d.getDate()+1)){
+    const dateStr = ymd(d);
+    const inMonth = (d >= start && d <= end);
+    const rec = aggByDay[dateStr] || {nParticipants:0,R:0,I:0,M:0,overall:0};
+    const v = viewSel.value === "overall"
+      ? rec.overall
+      : (viewSel.value === "Bible Reading" ? rec.R :
+         viewSel.value === "Morning Intimacy" ? rec.I : rec.M);
+
+    const cell = document.createElement("div");
+    cell.className = "cell" + (inMonth ? " in-month" : "");
+    const fill = document.createElement("div");
+    fill.className = "fill";
+    fill.style.background = bucketColor(v);
+    cell.appendChild(fill);
+
+    const dateEl = document.createElement("div");
+    dateEl.className = "date"; dateEl.textContent = d.getDate();
+    cell.appendChild(dateEl);
+
+    const mini = document.createElement("div");
+    mini.className = "mini";
+    const rBar = document.createElement("div"); rBar.className = "r";
+    const iBar = document.createElement("div"); iBar.className = "i";
+    const mBar = document.createElement("div"); mBar.className = "m";
+    rBar.style.opacity = Math.max(.25, rec.R); iBar.style.opacity = Math.max(.25, rec.I); mBar.style.opacity = Math.max(.25, rec.M);
+    mini.appendChild(rBar); mini.appendChild(iBar); mini.appendChild(mBar);
+    cell.appendChild(mini);
+
+    const pctEl = document.createElement("div");
+    pctEl.className = "pct"; pctEl.textContent = Math.round(v*100) + "%";
+    cell.appendChild(pctEl);
+
+    cell.title =
+      `${dateStr}\n`+
+      `Overall: ${pct(rec.overall)} (n=${rec.nParticipants})\n`+
+      `Reading: ${pct(rec.R)} • Intimacy: ${pct(rec.I)} • Memorization: ${pct(rec.M)}`;
+
+    cell.addEventListener("click", ()=>{
+      dlgDate.textContent = dateStr;
+      dlgN.textContent = String(rec.nParticipants);
+      dlgOverall.textContent = pct(rec.overall);
+      dlgR.textContent = pct(rec.R);
+      dlgI.textContent = pct(rec.I);
+      dlgM.textContent = pct(rec.M);
+      detail.showModal();
+    });
+
+    calGrid.appendChild(cell);
+  }
+}
+
+/* ========= BOOT ========= */
+(async function(){
+  await load();
+  render();
+  viewSel.addEventListener("change", render);
+  monthsSel.addEventListener("change", render);
+})();
+</script>
+</body>
+</html>

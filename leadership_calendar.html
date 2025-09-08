@@ -8,7 +8,8 @@
   :root{
     --bg:#f7f9fc; --card:#ffffff; --ink:#111827; --muted:#6b7280; --shadow:0 8px 24px rgba(0,0,0,.06);
     --radius:16px; --read:#3b82f6; --intimacy:#06b6d4; --memory:#7c3aed;
-    --g0:#eef2ff; --g1:#c7d2fe; --g2:#93c5fd; --g3:#60a5fa; --g4:#3b82f6; --g5:#1d4ed8; /* default gradient */
+    --ok:#10b981; --warn:#f59e0b; --bad:#ef4444;
+    --g0:#eef2ff; --g1:#c7d2fe; --g2:#93c5fd; --g3:#60a5fa; --g4:#3b82f6; --g5:#1d4ed8;
   }
   *{box-sizing:border-box}
   body{margin:0;background:var(--bg);color:var(--ink);font-family:ui-sans-serif,system-ui,-apple-system,Segoe UI,Roboto,"Helvetica Neue",Arial}
@@ -16,19 +17,45 @@
   header h1{margin:0;font-size:clamp(20px,3vw,28px)}
   .wrap{padding:0 24px 40px;max-width:1200px;margin:0 auto}
   .card{background:var(--card);border-radius:var(--radius);box-shadow:var(--shadow);padding:16px 16px 18px}
+
+  /* Controls */
   .controls{display:flex;gap:10px;flex-wrap:wrap;align-items:center}
-  select,button{border:1px solid #e5e7eb;border-radius:10px;padding:8px 10px;background:#fff;color:#111827}
+  select,button,input[type="search"]{border:1px solid #e5e7eb;border-radius:10px;padding:8px 10px;background:#fff;color:#111827}
+  input[type="search"]{min-width:220px}
   button{cursor:pointer;font-weight:600}
   .pill{font-size:12px;color:var(--muted)}
+
+  /* Leaderboard */
+  .leaderbar{display:flex;justify-content:space-between;align-items:center;margin-bottom:10px;gap:10px;flex-wrap:wrap}
+  .leadergrid{display:grid;grid-template-columns:repeat(3,1fr);gap:12px}
+  @media (max-width:1024px){ .leadergrid{grid-template-columns:repeat(2,1fr)} }
+  @media (max-width:640px){ .leadergrid{grid-template-columns:1fr} }
+  .tile{
+    border:1px solid #e5e7eb;border-radius:14px;padding:12px;display:grid;grid-template-columns:auto 1fr auto;gap:10px;align-items:center;
+  }
+  .avatar{
+    width:40px;height:40px;border-radius:50%;display:grid;place-items:center;
+    font-weight:800;color:#fff;background:linear-gradient(135deg,#64748b,#334155);
+  }
+  .tmeta{font-size:12px;color:var(--muted)}
+  .name{font-weight:700}
+  .bar{height:8px;border-radius:999px;background:#f1f5f9;overflow:hidden}
+  .fill{height:100%;background:linear-gradient(90deg,#a5b4fc,#4f46e5)}
+  .pct{font-weight:800}
+  .ratio{font-size:12px;color:#6b7280}
+  .badge{font-size:11px;border-radius:999px;border:1px solid #e5e7eb;padding:2px 8px;color:#374151;background:#fff}
+  .ok{color:#065f46;border-color:#10b981;background:#e8f8ee}
+  .warn{color:#92400e;border-color:#f59e0b;background:#fff7e6}
+  .bad{color:#991b1b;border-color:#ef4444;background:#fdeaea}
+
+  /* Calendar */
+  .calendar{margin-top:16px}
+  .monthbar{display:flex;justify-content:space-between;align-items:center;margin-bottom:10px}
+  .monthbar h2{margin:0;font-size:18px}
   .legend{display:flex;align-items:center;gap:10px;flex-wrap:wrap}
   .swatch{width:22px;height:12px;border-radius:4px;border:1px solid #e5e7eb}
   .grad{display:flex;gap:4px;align-items:center}
   .grad .swatch{width:16px}
-
-  /* Calendar */
-  .calendar{margin-top:14px}
-  .monthbar{display:flex;justify-content:space-between;align-items:center;margin-bottom:10px}
-  .monthbar h2{margin:0;font-size:18px}
   .grid{display:grid;grid-template-columns:repeat(7,1fr);gap:6px}
   .dow{font-size:11px;color:var(--muted);text-align:center;margin-bottom:6px}
   .cell{
@@ -38,8 +65,8 @@
   .cell.in-month{background:#ffffff}
   .cell:hover{transform:translateY(-2px);box-shadow:0 10px 22px rgba(0,0,0,.09)}
   .date{position:absolute;top:6px;left:6px;font-size:11px;color:#6b7280;font-weight:600}
-  .fill{position:absolute;inset:0;opacity:.88}
-  .pct{position:absolute;right:6px;bottom:6px;font-size:12px;font-weight:800;color:#0b1020;text-shadow:0 1px 0 rgba(255,255,255,.6)}
+  .fillday{position:absolute;inset:0;opacity:.88}
+  .pctday{position:absolute;right:6px;bottom:6px;font-size:12px;font-weight:800;color:#0b1020;text-shadow:0 1px 0 rgba(255,255,255,.6)}
   .mini{position:absolute;left:6px;right:6px;bottom:24px;height:6px;display:grid;grid-template-columns:repeat(3,1fr);gap:3px}
   .mini div{border-radius:2px;height:6px;opacity:.95}
   .mini .r{background:var(--read)}
@@ -47,7 +74,7 @@
   .mini .m{background:var(--memory)}
   .foot{font-size:12px;color:var(--muted);margin-top:10px}
 
-  /* Modal (simple) */
+  /* Modal */
   dialog{border:none;border-radius:14px;box-shadow:0 24px 64px rgba(0,0,0,.25);padding:0;width:min(460px,92vw)}
   dialog .dlg{padding:18px}
   dialog h3{margin:0 0 10px}
@@ -55,15 +82,14 @@
   dialog .kv{display:grid;grid-template-columns:1fr auto;gap:6px;font-size:14px}
   dialog .kv div:last-child{font-weight:700}
   dialog .close{position:absolute;top:8px;right:10px;background:#fff;border:1px solid #e5e7eb;border-radius:8px;padding:4px 8px;cursor:pointer}
-  @media (max-width:640px){ .cell{border-radius:8px} }
 </style>
 </head>
 <body>
 <header>
-  <h1>Leadership Calendar (Aggregated)</h1>
+  <h1>Leadership — Participants & Calendar</h1>
   <div class="controls card" style="padding:10px 12px">
     <div>
-      <label for="view">View:&nbsp;</label>
+      <label for="view">Calendar view:&nbsp;</label>
       <select id="view">
         <option value="overall">Overall (3 dailies)</option>
         <option value="Bible Reading">Bible Reading</option>
@@ -79,12 +105,29 @@
         <option value="3">Last 3 months</option>
       </select>
     </div>
-    <span class="pill">Shading = avg completion (partials included). Click a day for details.</span>
+    <span class="pill">Calendar shading = avg completion (partials included). Click a day for details.</span>
   </div>
 </header>
 
 <div class="wrap">
+  <!-- PARTICIPANT ACHIEVEMENT -->
   <div class="card">
+    <div class="leaderbar">
+      <h2 style="margin:0">Participant Achievement (Overall)</h2>
+      <div class="controls" style="gap:8px">
+        <input id="search" type="search" placeholder="Search participant…" />
+        <select id="sort">
+          <option value="pct">Sort by % (desc)</option>
+          <option value="name">Sort by name (A–Z)</option>
+        </select>
+        <span class="pill">Attainment = completed ÷ possible (all practices)</span>
+      </div>
+    </div>
+    <div id="leaderGrid" class="leadergrid"></div>
+  </div>
+
+  <!-- CALENDAR -->
+  <div class="card calendar">
     <div class="monthbar">
       <h2 id="rangeLabel">—</h2>
       <div class="legend">
@@ -110,6 +153,7 @@
   </div>
 </div>
 
+<!-- Day detail modal -->
 <dialog id="detail">
   <button class="close" onclick="detail.close()">Close</button>
   <div class="dlg">
@@ -144,55 +188,77 @@ function ymd(d){ return d.toISOString().slice(0,10); }
 function parseDate(s){ const d=new Date(s); return isNaN(d)?null:d; }
 function clamp01(x){ return Math.max(0, Math.min(1, Number(x)||0)); }
 function pct(x){ return Math.round(x*1000)/10 + "%"; }
-function bucketColor(x){
-  // 0..1 -> 0..5
-  const b = Math.max(0, Math.min(5, Math.floor(x*6)));
-  return COLORS[b];
-}
-function titleMonthRange(start, months){
-  const a = new Date(start), b = new Date(start); b.setMonth(b.getMonth()+months-1);
-  const fmt = (d)=> d.toLocaleString(undefined,{month:"long", year:"numeric"});
-  return months===1 ? fmt(a) : `${fmt(a)} – ${fmt(b)}`;
+function bucketColor(x){ const b = Math.max(0, Math.min(5, Math.floor(x*6))); return COLORS[b]; }
+function initials(nameOrEmail){
+  const s = (nameOrEmail||"").trim();
+  if (!s) return "—";
+  if (s.includes("@")) return s.slice(0,1).toUpperCase();
+  const parts = s.split(/\s+/).filter(Boolean);
+  if (parts.length===1) return parts[0].slice(0,2).toUpperCase();
+  return (parts[0][0]+parts[parts.length-1][0]).toUpperCase();
 }
 
-/* ========= DATA LOAD & AGG ========= */
-let ALL = []; // raw rows
-let aggByDay = {}; // date -> { nParticipants: number, overall:0..1, R/I/M: 0..1 }
+/* ========= DATA STATE ========= */
+let RAW = [];
+let aggByDay = {}; // date -> { nParticipants, R,I,M, overall }
+let board = [];    // [{pid, name, done, total, pct}]
 
+/* ========= LOAD & AGGREGATE ========= */
 async function load(){
   const text = await fetch(FACT_CSV_URL + (FACT_CSV_URL.includes("?")?"&":"?") + "cb=" + Date.now()).then(r=>r.text());
-  ALL = csvToRows(text);
+  RAW = csvToRows(text);
 
-  // Build participant/day/practice matrix
-  const seen = new Map(); // key: pid|date|practice -> value (0..1)
-  function getPid(row){
-    const cands = ["participant_id","Email Address","email","Email","email address"];
-    for (const k of cands){ if (row[k] && row[k].trim()) return row[k].trim().toLowerCase(); }
+  // participant id + name helpers
+  const getPid = (row)=>{
+    const c = ["participant_id","Email Address","email","Email","email address"];
+    for (const k of c){ if (row[k] && row[k].trim()) return row[k].trim().toLowerCase(); }
     return "";
-  }
-  for (const r of ALL){
+  };
+  const getName = (row)=>{
+    const c = ["Name","Full Name","Participant","Participant Name","Email Address","email","Email"];
+    for (const k of c){ if (row[k] && row[k].trim()) return row[k].trim(); }
+    return "";
+  };
+
+  /* ----- Leaderboard (all practices) ----- */
+  const totals = {}; // pid -> {done,total,name}
+  RAW.forEach(r=>{
+    const pid = getPid(r); if(!pid) return;
+    const val = Number(r.value || 0);
+    totals[pid] = totals[pid] || {done:0,total:0,name:getName(r) || pid};
+    totals[pid].done += val;
+    totals[pid].total += 1;
+    if (!totals[pid].name) totals[pid].name = getName(r) || pid;
+  });
+
+  board = Object.entries(totals).map(([pid, t])=>{
+    const pct = t.total ? (t.done / t.total) : 0;
+    return {pid, name:t.name, done:t.done, total:t.total, pct};
+  });
+
+  /* ----- Calendar aggregation (dailies) ----- */
+  const seen = new Map(); // pid|date|practice -> value 0..1 (max per day)
+  for (const r of RAW){
     const prac = r.practice;
     if (!DAILY.has(prac)) continue;
     const pid = getPid(r); if (!pid) continue;
-    const date = r.date || r.Date || r.date_str || "";
-    const d = parseDate(date); if (!d) continue;
+    const d = parseDate(r.date || r.Date || r.date_str || ""); if (!d) continue;
     const key = `${pid}|${ymd(d)}|${prac}`;
-    if (!seen.has(key)) seen.set(key, clamp01(r.value));
-    else seen.set(key, Math.max(seen.get(key), clamp01(r.value))); // keep max per person/day/practice
+    const val = clamp01(r.value);
+    seen.set(key, Math.max(val, seen.get(key)||0));
   }
 
-  // Aggregate per day across participants
   const byDayPrac = {}; // date -> practice -> {sum,count}
-  const participantsPerDay = {}; // date -> Set
+  const participantsPerDay = {};
   for (const [k,v] of seen.entries()){
-    const [, date, prac] = k.split("|");
+    const [pid, date, prac] = k.split("|");
     byDayPrac[date] = byDayPrac[date] || {};
     byDayPrac[date][prac] = byDayPrac[date][prac] || {sum:0,count:0};
     byDayPrac[date][prac].sum += v;
     byDayPrac[date][prac].count += 1;
 
     participantsPerDay[date] = participantsPerDay[date] || new Set();
-    participantsPerDay[date].add(k.split("|")[0]);
+    participantsPerDay[date].add(pid);
   }
 
   aggByDay = {};
@@ -202,17 +268,67 @@ async function load(){
     const r = byDayPrac[date]["Bible Reading"];   rec.R = r ? (r.sum / r.count) : 0;
     const i = byDayPrac[date]["Morning Intimacy"];rec.I = i ? (i.sum / i.count) : 0;
     const m = byDayPrac[date]["Scripture Memorization"]; rec.M = m ? (m.sum / m.count) : 0;
-
-    // Overall = average of per-practice averages (not weighted by submissions)
     const present = P.map(p=>byDayPrac[date][p] ? 1 : 0);
     const denom = present.reduce((a,b)=>a+b,0) || 3;
     rec.overall = (rec.R + rec.I + rec.M) / denom;
-
     aggByDay[date] = rec;
   });
 }
 
-/* ========= RENDER ========= */
+/* ========= RENDER: LEADERBOARD ========= */
+const leaderGrid = document.getElementById("leaderGrid");
+const searchEl = document.getElementById("search");
+const sortEl   = document.getElementById("sort");
+
+function badgeClass(p){
+  if (p >= 0.95) return "badge ok";
+  if (p >= 0.80) return "badge warn";
+  return "badge bad";
+}
+
+function renderLeaderboard(){
+  const q = (searchEl.value||"").toLowerCase();
+  let items = board.filter(b => b.name.toLowerCase().includes(q) || b.pid.includes(q));
+
+  if (sortEl.value==="name"){
+    items.sort((a,b)=> a.name.localeCompare(b.name));
+  } else {
+    items.sort((a,b)=> b.pct - a.pct);
+  }
+
+  leaderGrid.innerHTML = "";
+  items.forEach(b=>{
+    const pctNum = Math.round(b.pct*1000)/10; // one decimal
+    const tile = document.createElement("div");
+    tile.className = "tile";
+
+    const av = document.createElement("div");
+    av.className = "avatar";
+    av.textContent = initials(b.name || b.pid);
+
+    const mid = document.createElement("div");
+    const nm = document.createElement("div"); nm.className = "name"; nm.textContent = b.name || b.pid;
+    const meta = document.createElement("div"); meta.className="tmeta"; meta.textContent = b.pid;
+    const bar = document.createElement("div"); bar.className = "bar";
+    const fill = document.createElement("div"); fill.className = "fill"; fill.style.width = Math.min(100, Math.max(0,pctNum)) + "%";
+    bar.appendChild(fill);
+    const ratio = document.createElement("div"); ratio.className="ratio"; ratio.textContent = `${Math.round(b.done)} / ${b.total} units`;
+
+    mid.appendChild(nm); mid.appendChild(meta); mid.appendChild(bar); mid.appendChild(ratio);
+
+    const right = document.createElement("div");
+    const p = document.createElement("div"); p.className="pct"; p.textContent = pctNum + "%";
+    const badge = document.createElement("div"); badge.className = badgeClass(b.pct);
+    badge.textContent = b.pct>=0.95 ? "On track" : (b.pct>=0.80 ? "Watch" : "At risk");
+    right.style.textAlign="right";
+    right.appendChild(p); right.appendChild(badge);
+
+    tile.appendChild(av); tile.appendChild(mid); tile.appendChild(right);
+    leaderGrid.appendChild(tile);
+  });
+}
+
+/* ========= RENDER: CALENDAR ========= */
 const calGrid = document.getElementById("calGrid");
 const rangeLabel = document.getElementById("rangeLabel");
 const viewSel = document.getElementById("view");
@@ -225,76 +341,5 @@ const dlgR = document.getElementById("dlgR");
 const dlgI = document.getElementById("dlgI");
 const dlgM = document.getElementById("dlgM");
 
-function render(){
-  const months = Number(monthsSel.value || 2);
-  const now = new Date();
-  const start = new Date(now.getFullYear(), now.getMonth() - (months-1), 1); // first day of earliest month
-  const startGrid = new Date(start); startGrid.setDate(1 - start.getDay()); // back to Sunday
-  const end = new Date(now.getFullYear(), now.getMonth()+1, 0); // last day of current month
-  const endGrid = new Date(end); endGrid.setDate(end.getDate() + (6 - end.getDay())); // forward to Saturday
-
-  rangeLabel.textContent = titleMonthRange(start, months);
-
-  calGrid.innerHTML = "";
-  for (let d = new Date(startGrid); d <= endGrid; d.setDate(d.getDate()+1)){
-    const dateStr = ymd(d);
-    const inMonth = (d >= start && d <= end);
-    const rec = aggByDay[dateStr] || {nParticipants:0,R:0,I:0,M:0,overall:0};
-    const v = viewSel.value === "overall"
-      ? rec.overall
-      : (viewSel.value === "Bible Reading" ? rec.R :
-         viewSel.value === "Morning Intimacy" ? rec.I : rec.M);
-
-    const cell = document.createElement("div");
-    cell.className = "cell" + (inMonth ? " in-month" : "");
-    const fill = document.createElement("div");
-    fill.className = "fill";
-    fill.style.background = bucketColor(v);
-    cell.appendChild(fill);
-
-    const dateEl = document.createElement("div");
-    dateEl.className = "date"; dateEl.textContent = d.getDate();
-    cell.appendChild(dateEl);
-
-    const mini = document.createElement("div");
-    mini.className = "mini";
-    const rBar = document.createElement("div"); rBar.className = "r";
-    const iBar = document.createElement("div"); iBar.className = "i";
-    const mBar = document.createElement("div"); mBar.className = "m";
-    rBar.style.opacity = Math.max(.25, rec.R); iBar.style.opacity = Math.max(.25, rec.I); mBar.style.opacity = Math.max(.25, rec.M);
-    mini.appendChild(rBar); mini.appendChild(iBar); mini.appendChild(mBar);
-    cell.appendChild(mini);
-
-    const pctEl = document.createElement("div");
-    pctEl.className = "pct"; pctEl.textContent = Math.round(v*100) + "%";
-    cell.appendChild(pctEl);
-
-    cell.title =
-      `${dateStr}\n`+
-      `Overall: ${pct(rec.overall)} (n=${rec.nParticipants})\n`+
-      `Reading: ${pct(rec.R)} • Intimacy: ${pct(rec.I)} • Memorization: ${pct(rec.M)}`;
-
-    cell.addEventListener("click", ()=>{
-      dlgDate.textContent = dateStr;
-      dlgN.textContent = String(rec.nParticipants);
-      dlgOverall.textContent = pct(rec.overall);
-      dlgR.textContent = pct(rec.R);
-      dlgI.textContent = pct(rec.I);
-      dlgM.textContent = pct(rec.M);
-      detail.showModal();
-    });
-
-    calGrid.appendChild(cell);
-  }
-}
-
-/* ========= BOOT ========= */
-(async function(){
-  await load();
-  render();
-  viewSel.addEventListener("change", render);
-  monthsSel.addEventListener("change", render);
-})();
-</script>
-</body>
-</html>
+function titleMonthRange(start, months){
+  const a = new Date(start), b = new Date(start); b.setMonth(b.

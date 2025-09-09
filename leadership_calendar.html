@@ -4,6 +4,7 @@
 <meta charset="utf-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1" />
 <title>Leadership — Participants & Calendar (Aggregated)</title>
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
 <style>
   :root{
     --bg:#f7f9fc; --card:#ffffff; --ink:#111827; --muted:#6b7280; --shadow:0 8px 24px rgba(0,0,0,.06);
@@ -17,6 +18,13 @@
   header h1{margin:0;font-size:clamp(20px,3vw,28px)}
   .wrap{padding:0 24px 40px;max-width:1200px;margin:0 auto}
   .card{background:var(--card);border-radius:var(--radius);box-shadow:var(--shadow);padding:16px 16px 18px}
+
+  .summary{font-size:12px;color:var(--muted)}
+
+  /* Radar row */
+  .topgrid{display:grid;grid-template-columns:1fr;gap:16px;margin-bottom:16px}
+  .card h2{margin:0 0 10px;font-size:18px}
+  canvas{width:100%;height:auto;max-height:340px}
 
   /* Leaderboard (paginated, no search) */
   .leaderbar{display:flex;justify-content:space-between;align-items:center;margin-bottom:10px;gap:10px;flex-wrap:wrap}
@@ -44,7 +52,6 @@
   .pager button, .pager select{
     border:1px solid #e5e7eb;border-radius:10px;padding:6px 10px;background:#fff;cursor:pointer
   }
-  .summary{font-size:12px;color:var(--muted)}
 
   /* Calendar */
   .calendar{margin-top:16px}
@@ -90,6 +97,15 @@
 </header>
 
 <div class="wrap">
+  <!-- GROUP PRACTICE BALANCE (RADAR) -->
+  <section class="topgrid">
+    <div class="card">
+      <h2>Practice Balance (Radar) — Community</h2>
+      <canvas id="groupRadar"></canvas>
+      <div class="summary" id="radarNote"></div>
+    </div>
+  </section>
+
   <!-- PARTICIPANT ACHIEVEMENT (PAGINATED) -->
   <div class="card">
     <div class="leaderbar">
@@ -190,7 +206,7 @@ function initials(nameOrEmail){
 /* ========= DATA ========= */
 let RAW=[], aggByDay={}, board=[];
 let page=1, pageSize=4;
-let monthOffset=0; // 0 = current month, -1 = previous, +1 = next (if you want to look ahead)
+let monthOffset=0;
 
 /* ========= LOAD ========= */
 async function load(){
@@ -208,7 +224,7 @@ async function load(){
     return "";
   };
 
-  // Leaderboard totals
+  // Leaderboard totals (all practices)
   const totals = {};
   RAW.forEach(r=>{
     const pid = getPid(r); if(!pid) return;
@@ -216,11 +232,11 @@ async function load(){
     totals[pid] = totals[pid] || {done:0,total:0,name:getName(r)||pid};
     totals[pid].done += val; totals[pid].total += 1;
   });
-  board = Object.entries(totals).map(([pid,t])=>({pid,name:t.name,done:t.done,total:t.total,pct:t.total?(t.done/t.total):0}));
-  board.sort((a,b)=> b.pct - a.pct);
+  board = Object.entries(totals).map(([pid,t])=>({pid,name:t.name,done:t.done,total:t.total,pct:t.total?(t.done/t.total):0}))
+                                 .sort((a,b)=> b.pct - a.pct);
 
   // Calendar aggregation (dailies)
-  const seen = new Map(); // pid|date|practice -> value
+  const seen = new Map();
   for(const r of RAW){
     if(!DAILY.has(r.practice)) continue;
     const pid = getPid(r); if(!pid) continue;
@@ -250,6 +266,9 @@ async function load(){
     aggByDay[date] = rec;
   });
 
+  // Group radar aggregation (all practices)
+  buildGroupRadar(RAW);
+
   renderSummary();
 }
 
@@ -260,6 +279,55 @@ function renderSummary(){
   const pctLikely = total ? Math.round((likely/total)*1000)/10 : 0;
   document.getElementById("succSummary").textContent =
     `Likelihood of Successful Completion (≥${Math.round(TARGET*100)}% pace): ${likely} / ${total} participants (${pctLikely}%).`;
+}
+
+/* ========= GROUP RADAR ========= */
+let radarChart=null;
+function buildGroupRadar(rows){
+  const byPractice = {}; // practice -> {done,total}
+  rows.forEach(r=>{
+    const p = r.practice || "Unknown";
+    const v = Number(r.value||0);
+    byPractice[p] = byPractice[p] || {done:0,total:0};
+    byPractice[p].done += v; byPractice[p].total += 1;
+  });
+
+  // Keep a stable, readable order (alphabetical); you can customize if you prefer your own order.
+  const labels = Object.keys(byPractice).sort();
+  const dataPct = labels.map(k => {
+    const t = byPractice[k]; return t.total ? (t.done/t.total*100) : 0;
+  });
+
+  const ctx = document.getElementById("groupRadar").getContext("2d");
+  if (radarChart) radarChart.destroy();
+  radarChart = new Chart(ctx, {
+    type: "radar",
+    data: {
+      labels,
+      datasets: [{
+        label: "% Attainment by Practice",
+        data: dataPct,
+        borderWidth: 2,
+        pointRadius: 3,
+        backgroundColor: "rgba(59,130,246,.15)",
+        borderColor: "rgba(59,130,246,.9)"
+      }]
+    },
+    options: {
+      responsive: true,
+      scales: { r:{ suggestedMin:0, suggestedMax:100, ticks:{ stepSize:20 } } },
+      plugins:{ legend:{ display:true } }
+    }
+  });
+
+  // Small note: shows the weakest & strongest practice
+  let weakest = null, weakestVal = 101, strongest = null, strongestVal = -1;
+  labels.forEach((k,i)=>{
+    if (dataPct[i] < weakestVal){ weakestVal = dataPct[i]; weakest = k; }
+    if (dataPct[i] > strongestVal){ strongestVal = dataPct[i]; strongest = k; }
+  });
+  document.getElementById("radarNote").textContent =
+    `Community balance — Strongest: ${strongest} (${Math.round(strongestVal)}%). Weakest: ${weakest} (${Math.round(weakestVal)}%).`;
 }
 
 /* ========= LEADERBOARD (pagination) ========= */
@@ -323,16 +391,14 @@ const calNext   = document.getElementById("calNext");
 function monthTitle(y,m){ return new Date(y,m,1).toLocaleString(undefined,{month:"long",year:"numeric"}); }
 
 function renderCalendar(){
-  // Base month = current month + offset
   const base = new Date();
   const year = base.getFullYear();
   const monthIndex = base.getMonth() + monthOffset;
 
-  // Normalize year/month from offset
-  const start = new Date(year, monthIndex, 1);               // first day of target month
-  const end   = new Date(year, monthIndex + 1, 0);           // last day of target month
-  const startGrid = new Date(start); startGrid.setDate(1 - start.getDay());     // back to Sunday
-  const endGrid   = new Date(end);   endGrid.setDate(end.getDate() + (6 - end.getDay())); // forward to Saturday
+  const start = new Date(year, monthIndex, 1);
+  const end   = new Date(year, monthIndex + 1, 0);
+  const startGrid = new Date(start); startGrid.setDate(1 - start.getDay());
+  const endGrid   = new Date(end);   endGrid.setDate(end.getDate() + (6 - end.getDay()));
 
   rangeLabel.textContent = monthTitle(start.getFullYear(), start.getMonth());
 
